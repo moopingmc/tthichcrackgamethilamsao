@@ -1,0 +1,3211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>KRILLION UNLIMITED — One in a Krillion Ocean Trivia</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Outfit for sleek modern UI, JetBrains Mono for depth meters & scores -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    /* =====================================================================
+       BASE STYLES & OCEAN GLASS THEME
+    ===================================================================== */
+    :root {
+      --glass-bg: rgba(7, 22, 46, 0.56);
+      --glass-bg-strong: rgba(5, 16, 36, 0.76);
+      --glass-border: rgba(148, 226, 255, 0.18);
+      --glass-highlight: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      background-color: #041326;
+      color: #f0f9ff;
+      font-family: 'Outfit', system-ui, sans-serif;
+    }
+
+    /* Fullscreen fixed ocean canvas behind UI */
+    #oceanCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Frosted Ocean Glass Cards */
+    .ocean-glass {
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        0 18px 45px -12px rgba(0, 5, 18, 0.65),
+        inset 0 1px 0 0 var(--glass-highlight);
+    }
+
+    .ocean-glass-strong {
+      background: var(--glass-bg-strong);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(125, 211, 252, 0.24);
+      box-shadow:
+        0 24px 60px -15px rgba(0, 4, 15, 0.78),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(2, 12, 27, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.35);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(56, 189, 248, 0.6);
+    }
+
+    /* =====================================================================
+       GAME BUTTONS & INTERACTIVE EFFECTS
+    ===================================================================== */
+    .btn-dive {
+      background: linear-gradient(135deg, #06b6d4 0%, #0284c7 55%, #2563eb 100%);
+      box-shadow:
+        0 6px 22px -4px rgba(6, 182, 212, 0.55),
+        inset 0 1px 1px rgba(255, 255, 255, 0.4);
+      transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, filter 0.2s ease;
+    }
+    .btn-dive:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow:
+        0 10px 28px -4px rgba(6, 182, 212, 0.7),
+        inset 0 1px 2px rgba(255, 255, 255, 0.5);
+      filter: brightness(1.08);
+    }
+    .btn-dive:active:not(:disabled) {
+      transform: translateY(1px) scale(0.98);
+    }
+    .btn-dive:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 55%, #ea580c 100%);
+      box-shadow:
+        0 6px 24px -4px rgba(245, 158, 11, 0.55),
+        inset 0 1px 1px rgba(255, 255, 255, 0.5);
+      transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
+    }
+    .btn-gold:hover:not(:disabled) {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+    }
+    .btn-gold:active:not(:disabled) {
+      transform: translateY(1px) scale(0.98);
+    }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(186, 230, 253, 0.18);
+      transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+    }
+    .btn-ghost:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.13);
+      border-color: rgba(186, 230, 253, 0.38);
+      transform: translateY(-1px);
+    }
+    .btn-ghost:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    /* =====================================================================
+       ANIMATIONS (SHAKE, KRILL SWIM, POPUPS, TIER GLOWS)
+    ===================================================================== */
+    @keyframes inputShake {
+      0%, 100% { transform: translateX(0); }
+      15% { transform: translateX(-8px); }
+      30% { transform: translateX(8px); }
+      45% { transform: translateX(-6px); }
+      60% { transform: translateX(6px); }
+      75% { transform: translateX(-3px); }
+      90% { transform: translateX(3px); }
+    }
+    .animate-shake {
+      animation: inputShake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+
+    @keyframes krillBob {
+      0%, 100% { transform: translateY(0px) rotate(-3deg); }
+      50% { transform: translateY(-5px) rotate(4deg); }
+    }
+    .krill-bob {
+      animation: krillBob 2.6s ease-in-out infinite;
+    }
+
+    @keyframes krillDivePulse {
+      0% { transform: scale(1) rotate(0deg); }
+      30% { transform: scale(1.18) rotate(22deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+    .krill-dive-burst {
+      animation: krillDivePulse 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes floatUpFade {
+      0% { opacity: 0; transform: translateY(10px) scale(0.85); }
+      20% { opacity: 1; transform: translateY(-4px) scale(1.08); }
+      80% { opacity: 1; transform: translateY(-28px) scale(1); }
+      100% { opacity: 0; transform: translateY(-44px) scale(0.92); }
+    }
+    .depth-popup {
+      animation: floatUpFade 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes cardPopIn {
+      0% { opacity: 0; transform: translateY(14px) scale(0.97); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .card-enter {
+      animation: cardPopIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes krillionShimmer {
+      0%, 100% {
+        box-shadow: 0 0 22px rgba(255, 209, 102, 0.45), 0 0 48px rgba(0, 245, 212, 0.25);
+      }
+      50% {
+        box-shadow: 0 0 34px rgba(255, 209, 102, 0.8), 0 0 68px rgba(0, 245, 212, 0.45);
+      }
+    }
+    .krillion-aura {
+      animation: krillionShimmer 2s ease-in-out infinite;
+    }
+
+    @keyframes sonarPing {
+      0% { transform: scale(0.7); opacity: 0.9; }
+      100% { transform: scale(2.1); opacity: 0; }
+    }
+    .sonar-ring {
+      animation: sonarPing 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
+    /* Mode / Pack Active Pills */
+    .pill-active {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.32), rgba(59, 130, 246, 0.32));
+      border-color: rgba(34, 211, 238, 0.75) !important;
+      box-shadow: 0 0 18px -2px rgba(34, 211, 238, 0.4);
+      color: #ffffff;
+    }
+
+    /* Smooth vertical depth krill travel */
+    #verticalKrillWrapper {
+      transition: top 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #verticalDepthFill {
+      transition: height 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #mobileKrillWrapper {
+      transition: left 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #mobileDepthFill {
+      transition: width 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-400/30 selection:text-cyan-100">
+
+  <!-- Full-Screen Dynamic Deep Ocean Canvas -->
+  <canvas id="oceanCanvas" aria-hidden="true"></canvas>
+
+  <!-- Toast Notification Container (replaces alert/confirm) -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-[90vw]"></div>
+
+  <!-- Main App Shell -->
+  <div class="relative z-10 min-h-[100dvh] flex flex-col">
+
+    <!-- ===================================================================
+         TOP NAVIGATION BAR
+    =================================================================== -->
+    <header class="w-full px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+      <!-- Brand / Home Trigger -->
+      <button id="brandHomeBtn" type="button" class="flex items-center gap-2.5 group focus:outline-none text-left">
+        <div id="headerKrillIcon" class="w-9 h-9 rounded-xl ocean-glass flex items-center justify-center p-1.5 group-hover:scale-105 transition-transform">
+          <!-- SVG Krill injected via JS -->
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-black tracking-wider text-lg sm:text-xl bg-gradient-to-r from-white via-cyan-200 to-teal-300 bg-clip-text text-transparent">KRILLION</span>
+            <span class="text-[10px] font-extrabold uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-cyan-400/20 text-cyan-200 border border-cyan-300/35">UNLIMITED</span>
+          </div>
+          <p id="headerZoneSub" class="text-[11px] text-cyan-200/75 font-medium leading-tight">Sunlight Zone • 0m</p>
+        </div>
+      </button>
+
+      <!-- Right Controls: Skin Locker, Audio Toggle, Return Home (in game) -->
+      <div class="flex items-center gap-2">
+        <button id="openSkinsBtn" type="button" title="Krill Skins Locker" class="btn-ghost px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-cyan-100 flex items-center gap-1.5 min-h-[40px]">
+          <span class="w-3 h-3 rounded-full inline-block shadow-sm" id="skinDotIndicator" style="background:#FF6B6B;"></span>
+          <span class="hidden sm:inline">Skins</span>
+        </button>
+
+        <button id="soundToggleBtn" type="button" title="Toggle Sound Effects" class="btn-ghost w-10 h-10 rounded-xl flex items-center justify-center text-cyan-100" aria-label="Toggle sound">
+          <!-- Speaker SVG updated via JS -->
+        </button>
+
+        <button id="quitToMenuBtn" type="button" class="hidden btn-ghost px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-rose-200 hover:text-white border-rose-300/20 min-h-[40px]">
+          Surface
+        </button>
+      </div>
+    </header>
+
+    <!-- ===================================================================
+         MAIN CONTENT WRAPPER
+    =================================================================== -->
+    <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 pt-1 flex flex-col justify-center">
+
+      <!-- ===============================================================
+           VIEW 1: HOME / MENU SCREEN
+      =============================================================== -->
+      <section id="homeView" class="w-full max-w-4xl mx-auto space-y-5 card-enter">
+
+        <!-- Hero Card -->
+        <div class="ocean-glass-strong rounded-3xl p-5 sm:p-8 relative overflow-hidden">
+          <!-- Subtle ambient glow -->
+          <div class="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-cyan-400/15 blur-3xl pointer-events-none"></div>
+          <div class="absolute -bottom-24 -left-24 w-64 h-64 rounded-full bg-teal-400/10 blur-3xl pointer-events-none"></div>
+
+          <div class="relative flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="text-center md:text-left space-y-2.5 max-w-xl">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-400/15 border border-teal-300/30 text-teal-200 text-xs font-semibold">
+                <span class="w-2 h-2 rounded-full bg-teal-300 animate-pulse"></span>
+                100% Free • Unlimited Dives • Unlimited Tries • AI Judge
+              </div>
+              <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-[1.05]">
+                Think rare. <span class="bg-gradient-to-r from-cyan-300 via-teal-200 to-amber-300 bg-clip-text text-transparent">Dive deeper.</span>
+              </h1>
+              <p class="text-sm sm:text-base text-sky-100/80 leading-relaxed">
+                Any valid trivia answer scores — but the rarer your answer, the deeper your krill sinks. Hunt for <strong class="text-amber-300 font-bold">One in a Krillion</strong> gems to reach the Hadal Trench!
+              </p>
+            </div>
+
+            <!-- Interactive Krill Showcase -->
+            <div class="flex flex-col items-center shrink-0">
+              <div id="homeKrillPreview" class="w-28 h-28 sm:w-32 sm:h-32 rounded-full ocean-glass flex items-center justify-center p-4 krill-bob cursor-pointer hover:scale-105 transition-transform" title="Click to change Krill Skin!">
+                <!-- SVG Krill injected via JS -->
+              </div>
+              <span id="homeSkinLabel" class="mt-2 text-xs font-semibold text-cyan-200/80">Classic Coral</span>
+            </div>
+          </div>
+
+          <!-- Stats Strip -->
+          <div class="mt-6 grid grid-cols-3 gap-2.5 sm:gap-4 pt-5 border-t border-sky-200/10">
+            <div class="rounded-2xl bg-slate-950/35 border border-sky-200/10 px-3 py-2.5 text-center">
+              <div class="text-[11px] uppercase tracking-wider text-sky-200/65 font-semibold">Best Depth</div>
+              <div id="statBestDepth" class="font-mono font-extrabold text-lg sm:text-2xl text-cyan-300">0m</div>
+            </div>
+            <div class="rounded-2xl bg-slate-950/35 border border-sky-200/10 px-3 py-2.5 text-center">
+              <div class="text-[11px] uppercase tracking-wider text-sky-200/65 font-semibold">Krillions Found</div>
+              <div id="statKrillions" class="font-mono font-extrabold text-lg sm:text-2xl text-amber-300">0</div>
+            </div>
+            <div class="rounded-2xl bg-slate-950/35 border border-sky-200/10 px-3 py-2.5 text-center">
+              <div class="text-[11px] uppercase tracking-wider text-sky-200/65 font-semibold">Dives Logged</div>
+              <div id="statDives" class="font-mono font-extrabold text-lg sm:text-2xl text-teal-300">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode Selector + Pack Selector Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+          <!-- Left: Game Mode Selector -->
+          <div class="lg:col-span-5 ocean-glass rounded-3xl p-5 flex flex-col justify-between space-y-4">
+            <div class="space-y-3">
+              <h2 class="text-xs font-extrabold uppercase tracking-widest text-cyan-200/80 flex items-center gap-2">
+                <span>1. Choose Dive Mode</span>
+              </h2>
+
+              <div id="modeButtons" class="space-y-2.5">
+                <!-- Classic Dive -->
+                <button type="button" data-mode="classic" class="mode-card w-full text-left p-3.5 rounded-2xl border border-sky-200/15 bg-slate-950/30 hover:bg-slate-900/45 transition-all pill-active">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white text-base">🌊 Classic Dive</span>
+                    <span class="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-cyan-400/20 text-cyan-200">7 Prompts • 25s</span>
+                  </div>
+                  <p class="text-xs text-sky-100/70 mt-1">Classic 7-round plunge. Aim for 7,000m in the Hadal Trench.</p>
+                </button>
+
+                <!-- Endless Abyss -->
+                <button type="button" data-mode="endless" class="mode-card w-full text-left p-3.5 rounded-2xl border border-sky-200/15 bg-slate-950/30 hover:bg-slate-900/45 transition-all">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white text-base">♾️ Endless Abyss</span>
+                    <span class="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-indigo-400/20 text-indigo-200">Infinite • 25s</span>
+                  </div>
+                  <p class="text-xs text-sky-100/70 mt-1">Dive forever with a running depth total & hot streak counter.</p>
+                </button>
+
+                <!-- Unlimited Chill / Practice -->
+                <button type="button" data-mode="chill" class="mode-card w-full text-left p-3.5 rounded-2xl border border-sky-200/15 bg-slate-950/30 hover:bg-slate-900/45 transition-all">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-white text-base">🫧 Chill Practice</span>
+                    <span class="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-teal-400/20 text-teal-200">∞ Time • Retry Rarer</span>
+                  </div>
+                  <p class="text-xs text-sky-100/70 mt-1">No pressure. Keep retrying even after scoring to hunt Krillions!</p>
+                </button>
+              </div>
+
+              <!-- Optional Timer Toggle (visible when Chill mode selected) -->
+              <div id="chillTimerRow" class="hidden pt-1 px-1 flex items-center justify-between text-xs text-sky-100/85">
+                <label for="chillTimerToggle" class="cursor-pointer select-none">Optional 25s timer in Chill mode</label>
+                <input id="chillTimerToggle" type="checkbox" class="w-4 h-4 accent-cyan-400 rounded cursor-pointer" />
+              </div>
+            </div>
+
+            <!-- Big Start Dive CTA -->
+            <button id="startDiveBtn" type="button" class="btn-dive w-full py-4 px-6 rounded-2xl font-black text-lg tracking-wide text-white flex items-center justify-center gap-2 min-h-[54px]">
+              <span>BEGIN DIVE</span>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+            </button>
+          </div>
+
+          <!-- Right: Themed Packs + Custom AI Topic Generator -->
+          <div class="lg:col-span-7 ocean-glass rounded-3xl p-5 flex flex-col justify-between space-y-5">
+            <!-- Built-in & Custom Pack Selector -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <h2 class="text-xs font-extrabold uppercase tracking-widest text-cyan-200/80">2. Select Trivia Pack</h2>
+                <span id="packCountBadge" class="text-[11px] font-mono text-sky-200/70">49 prompts ready</span>
+              </div>
+
+              <div id="packPillsContainer" class="flex flex-wrap gap-2">
+                <!-- Pack buttons injected via JS -->
+              </div>
+            </div>
+
+            <!-- Custom AI Topic Generator -->
+            <div class="rounded-2xl bg-slate-950/45 border border-cyan-300/20 p-4 space-y-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-base">✨</span>
+                  <h3 class="text-sm font-bold text-white">Custom AI Pack Generator</h3>
+                </div>
+                <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-400/20 text-purple-200 border border-purple-300/30">Gemini Live</span>
+              </div>
+              <p class="text-xs text-sky-100/70">Type any niche topic (e.g., <em>Anime, Valorant, 90s Movies, Vietnamese Food, Minecraft</em>) to generate 7 custom rare-answer prompts instantly.</p>
+              <form id="customPackForm" class="flex flex-col sm:flex-row gap-2 pt-1">
+                <input
+                  id="customTopicInput"
+                  type="text"
+                  maxlength="50"
+                  placeholder="Enter any topic..."
+                  class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-900/75 border border-sky-200/20 text-white placeholder-sky-200/40 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/25 min-h-[44px]"
+                />
+                <button id="generatePackBtn" type="submit" class="btn-gold px-4 py-2.5 rounded-xl font-bold text-sm text-slate-950 whitespace-nowrap flex items-center justify-center gap-1.5 min-h-[44px]">
+                  <span id="genBtnText">Generate Pack</span>
+                </button>
+              </form>
+            </div>
+
+            <!-- Rarity Tier Legend -->
+            <div class="pt-1">
+              <div class="text-[11px] uppercase tracking-wider text-sky-200/60 font-bold mb-2">Rarity Depth Scale (10m per pt)</div>
+              <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-center">
+                <div class="rounded-xl px-1.5 py-1.5 bg-slate-500/20 border border-slate-300/20">
+                  <div class="text-[10px] font-bold text-slate-200 truncate">Plankton</div>
+                  <div class="font-mono text-[10px] text-slate-300/80">+100m</div>
+                </div>
+                <div class="rounded-xl px-1.5 py-1.5 bg-amber-600/20 border border-amber-400/25">
+                  <div class="text-[10px] font-bold text-amber-200 truncate">Too Clever</div>
+                  <div class="font-mono text-[10px] text-amber-200/80">+150m</div>
+                </div>
+                <div class="rounded-xl px-1.5 py-1.5 bg-sky-500/20 border border-sky-300/25">
+                  <div class="text-[10px] font-bold text-sky-200 truncate">Schooler</div>
+                  <div class="font-mono text-[10px] text-sky-200/80">+300m</div>
+                </div>
+                <div class="rounded-xl px-1.5 py-1.5 bg-emerald-500/20 border border-emerald-300/30">
+                  <div class="text-[10px] font-bold text-emerald-200 truncate">Rare</div>
+                  <div class="font-mono text-[10px] text-emerald-200/80">+600m</div>
+                </div>
+                <div class="rounded-xl px-1.5 py-1.5 bg-violet-500/25 border border-violet-300/35">
+                  <div class="text-[10px] font-bold text-violet-200 truncate">Deep Cut</div>
+                  <div class="font-mono text-[10px] text-violet-200/80">+850m</div>
+                </div>
+                <div class="rounded-xl px-1.5 py-1.5 bg-gradient-to-br from-amber-400/30 to-teal-400/30 border border-amber-300/60">
+                  <div class="text-[10px] font-extrabold text-amber-200 truncate">Krillion!</div>
+                  <div class="font-mono text-[10px] text-amber-100">+1000m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ===============================================================
+           VIEW 2: ACTIVE GAMEPLAY SCREEN
+      =============================================================== -->
+      <section id="gameView" class="hidden w-full max-w-5xl mx-auto">
+
+        <!-- Mobile Horizontal Depth Gauge (< lg) -->
+        <div class="lg:hidden ocean-glass rounded-2xl p-3 mb-4">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <div class="flex items-center gap-2">
+              <span id="mobileZoneBadge" class="font-bold text-cyan-200">Sunlight Zone</span>
+              <span id="mobileStreakBadge" class="hidden px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-mono text-[10px] font-bold">🔥 0</span>
+            </div>
+            <div class="font-mono font-extrabold text-white text-sm">
+              <span id="mobileDepthValue">0</span>m
+              <span id="mobileDepthTarget" class="text-sky-200/50 text-xs font-normal">/ 7,000m</span>
+            </div>
+          </div>
+          <div class="relative h-4 rounded-full bg-slate-950/65 border border-sky-200/15 overflow-visible">
+            <div id="mobileDepthFill" class="h-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-amber-300" style="width: 2%;"></div>
+            <div id="mobileKrillWrapper" class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 pointer-events-none" style="left: 2%;">
+              <div id="mobileKrillSvg" class="w-full h-full"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+
+          <!-- Desktop Vertical Depth Gauge (Left Column >= lg) -->
+          <aside class="hidden lg:flex lg:col-span-3 ocean-glass rounded-3xl p-5 flex-col justify-between min-h-[540px] relative">
+            <div class="text-center space-y-1">
+              <div class="text-[11px] uppercase tracking-widest text-sky-200/65 font-bold">Current Depth</div>
+              <div id="desktopDepthValue" class="font-mono text-3xl font-black text-white">0m</div>
+              <div id="desktopZoneBadge" class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-400/20 text-cyan-200 border border-cyan-300/30">Sunlight Zone</div>
+            </div>
+
+            <!-- Vertical Depth Track -->
+            <div class="relative flex-1 my-5 mx-auto w-full flex justify-center">
+              <!-- Zone Labels on Right of Track -->
+              <div class="relative w-10 h-full rounded-full bg-slate-950/65 border border-sky-200/15 p-1 flex justify-center">
+                <!-- Filled Column -->
+                <div id="verticalDepthFill" class="w-full rounded-full bg-gradient-to-b from-cyan-300 via-indigo-500 to-amber-300 self-start" style="height: 2%;"></div>
+
+                <!-- Animated Krill Diver Buddy -->
+                <div id="verticalKrillWrapper" class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 z-20 pointer-events-none" style="top: 2%;">
+                  <div id="verticalKrillSvg" class="w-full h-full krill-bob drop-shadow-[0_0_12px_rgba(34,211,238,0.6)]"></div>
+                  <!-- Floating +XXXm popup anchor -->
+                  <div id="depthPopupAnchor" class="absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap pointer-events-none"></div>
+                </div>
+              </div>
+
+              <!-- Depth Markers -->
+              <div class="ml-4 flex flex-col justify-between text-[10px] font-mono text-sky-200/65 py-1 select-none">
+                <div>0m <span class="text-cyan-300/80">Sunlight</span></div>
+                <div>1,000m <span class="text-sky-300/80">Twilight</span></div>
+                <div>2,500m <span class="text-indigo-300/80">Midnight</span></div>
+                <div>4,500m <span class="text-violet-300/80">Abyssal</span></div>
+                <div>6,500m+ <span class="text-amber-300/90">Hadal</span></div>
+              </div>
+            </div>
+
+            <!-- Score & Streak Footer -->
+            <div class="grid grid-cols-2 gap-2 pt-3 border-t border-sky-200/10 text-center">
+              <div class="rounded-xl bg-slate-950/40 py-2 px-1">
+                <div class="text-[10px] uppercase text-sky-200/60 font-bold">Points</div>
+                <div id="desktopScoreValue" class="font-mono font-extrabold text-base text-teal-300">0</div>
+              </div>
+              <div class="rounded-xl bg-slate-950/40 py-2 px-1">
+                <div class="text-[10px] uppercase text-sky-200/60 font-bold">Streak</div>
+                <div id="desktopStreakValue" class="font-mono font-extrabold text-base text-amber-300">0</div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Center Main Prompt & Reveal Area -->
+          <div class="lg:col-span-9 flex flex-col justify-center">
+
+            <!-- Status Pill Header above Prompt Card -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 px-1">
+              <div class="flex items-center gap-2">
+                <span id="promptProgressBadge" class="px-3 py-1 rounded-full ocean-glass text-xs font-mono font-bold text-cyan-200">DIVE 1 / 7</span>
+                <span id="activePackBadge" class="px-3 py-1 rounded-full ocean-glass text-xs font-semibold text-sky-100/85">All Mix</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="activeModeBadge" class="px-3 py-1 rounded-full bg-white/10 text-xs font-semibold text-teal-200">Classic Dive</span>
+                <button id="endEndlessBtn" type="button" class="hidden px-3 py-1 rounded-full bg-amber-400/20 hover:bg-amber-400/30 border border-amber-300/40 text-amber-200 text-xs font-bold transition">
+                  Finish & Log Dive
+                </button>
+              </div>
+            </div>
+
+            <!-- PROMPT INPUT CARD -->
+            <div id="promptCard" class="ocean-glass-strong rounded-3xl p-5 sm:p-8 space-y-6 relative overflow-hidden card-enter">
+
+              <!-- Countdown Timer Bar -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs font-mono">
+                  <span class="text-sky-200/70 uppercase tracking-wider font-semibold">Oxygen Timer</span>
+                  <span id="timerText" class="font-bold text-cyan-300 text-sm">25.0s</span>
+                </div>
+                <div class="w-full h-2.5 rounded-full bg-slate-950/70 overflow-hidden border border-sky-200/15">
+                  <div id="timerBarFill" class="h-full rounded-full bg-gradient-to-r from-teal-300 via-cyan-400 to-sky-400 transition-[width] duration-75" style="width: 100%;"></div>
+                </div>
+              </div>
+
+              <!-- Prompt Question -->
+              <div class="py-2 text-center space-y-2">
+                <div class="text-xs uppercase tracking-widest text-cyan-300/80 font-bold">Think of the rarest valid answer</div>
+                <h2 id="promptQuestionText" class="text-2xl sm:text-4xl font-black text-white leading-tight tracking-tight">
+                  Name a country in Europe
+                </h2>
+              </div>
+
+              <!-- Answer Input Form -->
+              <form id="answerForm" class="space-y-3" autocomplete="off">
+                <div id="inputGroupWrapper" class="flex flex-col sm:flex-row gap-2.5">
+                  <input
+                    id="answerInput"
+                    type="text"
+                    placeholder="Type any valid answer..."
+                    autocomplete="off"
+                    autocorrect="off"
+                    spellcheck="false"
+                    class="flex-1 px-5 py-4 rounded-2xl bg-slate-950/75 border-2 border-sky-300/25 text-white placeholder-sky-200/35 text-lg font-semibold focus:outline-none focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/20 transition-all min-h-[56px]"
+                  />
+                  <button id="submitAnswerBtn" type="submit" class="btn-dive px-7 py-4 rounded-2xl font-black text-base sm:text-lg tracking-wide text-white min-h-[56px] flex items-center justify-center gap-2 shrink-0">
+                    <span>DIVE</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                  </button>
+                </div>
+
+                <!-- Live Feedback / AI Judge Loading Indicator -->
+                <div class="min-h-[28px] flex items-center justify-center text-center">
+                  <div id="aiCheckingIndicator" class="hidden inline-flex items-center gap-2.5 text-sm font-semibold text-cyan-200">
+                    <span class="relative flex h-3 w-3">
+                      <span class="sonar-ring absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-cyan-300"></span>
+                    </span>
+                    <span>Checking the depths with Gemini AI...</span>
+                  </div>
+                  <p id="inlineFeedbackMsg" class="text-sm font-semibold text-rose-300"></p>
+                </div>
+              </form>
+
+              <!-- Previous Guesses / Chill Best Attempt Banner -->
+              <div id="chillBestBanner" class="hidden rounded-2xl bg-teal-500/15 border border-teal-300/30 px-4 py-2.5 flex items-center justify-between text-xs sm:text-sm">
+                <span class="text-teal-100">Current best on this prompt: <strong id="chillBestAnswerText" class="text-white"></strong></span>
+                <span id="chillBestTierBadge" class="font-mono font-bold text-amber-300"></span>
+              </div>
+
+              <div id="previousGuessesRow" class="hidden flex-wrap items-center justify-center gap-1.5 pt-1">
+                <!-- Past tried chips -->
+              </div>
+
+              <!-- Action Footer -->
+              <div class="flex items-center justify-between pt-2 border-t border-sky-200/10 text-xs sm:text-sm">
+                <span class="text-sky-200/60">Unlimited tries while active — think obscure!</span>
+                <button id="skipPromptBtn" type="button" class="btn-ghost px-3.5 py-2 rounded-xl text-sky-200/85 hover:text-white font-semibold min-h-[38px]">
+                  Skip / Give Up →
+                </button>
+              </div>
+            </div>
+
+            <!-- RESULT REVEAL CARD (shown after valid answer or skip/timeout) -->
+            <div id="revealCard" class="hidden ocean-glass-strong rounded-3xl p-5 sm:p-8 space-y-5 relative overflow-hidden card-enter">
+
+              <!-- Top Banner: Your Answer + Glowing Tier Badge -->
+              <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-5 border-b border-sky-200/15">
+                <div class="text-center sm:text-left space-y-1">
+                  <div class="text-xs uppercase tracking-widest text-sky-200/65 font-bold" id="revealPromptEcho">Prompt</div>
+                  <div class="text-2xl sm:text-3xl font-black text-white break-words" id="revealAnswerDisplay">San Marino</div>
+                  <p id="revealWittyRemark" class="text-sm text-cyan-100/85 italic max-w-md">"Tiny mountain enclave, giant abyssal plunge!"</p>
+                </div>
+
+                <!-- Tier Pill + Depth Gain -->
+                <div id="revealTierBox" class="flex flex-col items-center justify-center px-6 py-4 rounded-2xl border min-w-[180px] text-center">
+                  <div id="revealTierEmoji" class="text-2xl mb-0.5">✨</div>
+                  <div id="revealTierName" class="text-lg font-black uppercase tracking-wider">One in a Krillion</div>
+                  <div id="revealPointsGain" class="font-mono font-extrabold text-sm mt-0.5">+100 pts • +1,000m</div>
+                  <div id="revealJudgeSource" class="text-[10px] uppercase tracking-wider opacity-75 mt-1">Instant Reef Bank</div>
+                </div>
+              </div>
+
+              <!-- Educational Comparison: Obvious Plankton vs Ultra-Rare Krillion -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div class="rounded-2xl bg-slate-950/45 border border-slate-300/15 p-4 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-extrabold uppercase tracking-wider text-slate-300">🦠 Common (Plankton)</span>
+                    <span class="font-mono text-[11px] text-slate-400">+100m</span>
+                  </div>
+                  <div id="revealPlanktonChips" class="flex flex-wrap gap-1.5"></div>
+                </div>
+
+                <div class="rounded-2xl bg-gradient-to-br from-amber-500/15 via-slate-950/50 to-teal-500/15 border border-amber-300/35 p-4 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-extrabold uppercase tracking-wider text-amber-200">👑 One in a Krillion</span>
+                    <span class="font-mono text-[11px] text-amber-200">+1,000m</span>
+                  </div>
+                  <div id="revealKrillionChips" class="flex flex-wrap gap-1.5"></div>
+                </div>
+              </div>
+
+              <!-- Expandable Full Tier Explorer -->
+              <div>
+                <button id="toggleAllTiersBtn" type="button" class="text-xs font-semibold text-cyan-300/85 hover:text-cyan-200 flex items-center gap-1.5 mx-auto">
+                  <span id="toggleAllTiersLabel">Show more sample tiers</span>
+                  <svg id="toggleAllTiersChevron" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div id="allTiersExpanded" class="hidden mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs"></div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <!-- Chill Mode Retry for Rarer Button -->
+                <button id="retryForRarerBtn" type="button" class="hidden w-full sm:w-auto btn-ghost px-6 py-3.5 rounded-2xl font-bold text-teal-200 border-teal-300/35 hover:bg-teal-400/15 min-h-[50px]">
+                  ↻ Retry for Rarer
+                </button>
+
+                <button id="nextPromptBtn" type="button" class="w-full sm:w-auto flex-1 max-w-sm btn-dive px-8 py-3.5 rounded-2xl font-black text-base sm:text-lg tracking-wide text-white min-h-[50px] flex items-center justify-center gap-2">
+                  <span id="nextPromptBtnText">Dive Deeper</span>
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                </button>
+              </div>
+              <p class="text-center text-[11px] text-sky-200/45 hidden sm:block">Tip: Press <kbd class="px-1.5 py-0.5 rounded bg-white/10 font-mono text-sky-200/75">Enter</kbd> to dive deeper</p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ===============================================================
+           VIEW 3: END-OF-DIVE LOG / SUMMARY SCREEN
+      =============================================================== -->
+      <section id="summaryView" class="hidden w-full max-w-3xl mx-auto space-y-5 card-enter">
+        <div class="ocean-glass-strong rounded-3xl p-6 sm:p-8 text-center space-y-5 relative overflow-hidden">
+          <div class="absolute -top-20 left-1/2 -translate-x-1/2 w-80 h-40 bg-cyan-400/20 blur-3xl pointer-events-none"></div>
+
+          <div class="relative space-y-2">
+            <div id="newBestBadge" class="hidden inline-block px-3 py-1 rounded-full bg-amber-400/25 border border-amber-300/60 text-amber-200 text-xs font-extrabold uppercase tracking-widest mb-1">
+              🏆 New Personal Best Depth!
+            </div>
+            <h2 class="text-sm uppercase tracking-widest text-cyan-200/80 font-extrabold">Dive Log Complete</h2>
+            <div id="summaryTotalDepth" class="font-mono text-5xl sm:text-6xl font-black bg-gradient-to-r from-white via-cyan-200 to-amber-200 bg-clip-text text-transparent">
+              4,850m
+            </div>
+            <div id="summaryZoneReached" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-sky-200/20 text-sm font-bold text-cyan-100">
+              Abyssal Zone Reached
+            </div>
+          </div>
+
+          <!-- Mini Stats -->
+          <div class="grid grid-cols-3 gap-3 max-w-md mx-auto pt-2">
+            <div class="rounded-2xl bg-slate-950/45 border border-sky-200/10 p-3">
+              <div class="text-[10px] uppercase text-sky-200/60 font-bold">Total Score</div>
+              <div id="summaryTotalScore" class="font-mono text-xl font-extrabold text-teal-300">485</div>
+            </div>
+            <div class="rounded-2xl bg-slate-950/45 border border-sky-200/10 p-3">
+              <div class="text-[10px] uppercase text-sky-200/60 font-bold">Krillions</div>
+              <div id="summaryKrillionCount" class="font-mono text-xl font-extrabold text-amber-300">2</div>
+            </div>
+            <div class="rounded-2xl bg-slate-950/45 border border-sky-200/10 p-3">
+              <div class="text-[10px] uppercase text-sky-200/60 font-bold">Answered</div>
+              <div id="summaryAnsweredCount" class="font-mono text-xl font-extrabold text-cyan-300">7/7</div>
+            </div>
+          </div>
+
+          <!-- Emoji Share Preview Bar -->
+          <div id="summaryEmojiBar" class="font-mono text-xl tracking-widest py-2 select-all"></div>
+
+          <!-- Buttons -->
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
+            <button id="copyResultGridBtn" type="button" class="w-full sm:w-auto btn-gold px-6 py-3.5 rounded-2xl font-extrabold text-slate-950 text-sm sm:text-base flex items-center justify-center gap-2 min-h-[48px]">
+              <span>📋 Copy Result Grid</span>
+            </button>
+            <button id="diveAgainBtn" type="button" class="w-full sm:w-auto btn-dive px-7 py-3.5 rounded-2xl font-black text-white text-sm sm:text-base flex items-center justify-center gap-2 min-h-[48px]">
+              <span>🌊 Dive Again</span>
+            </button>
+            <button id="summaryMenuBtn" type="button" class="w-full sm:w-auto btn-ghost px-5 py-3.5 rounded-2xl font-bold text-cyan-100 text-sm sm:text-base min-h-[48px]">
+              Menu
+            </button>
+          </div>
+        </div>
+
+        <!-- Detailed Prompt-by-Prompt Table -->
+        <div class="ocean-glass rounded-3xl p-4 sm:p-6 space-y-3">
+          <h3 class="text-xs font-extrabold uppercase tracking-widest text-cyan-200/80 px-1">Prompt Breakdown</h3>
+          <div id="summaryBreakdownList" class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+            <!-- Breakdown rows injected via JS -->
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===================================================================
+       KRILL SKINS LOCKER MODAL (100% FREE, NO PAYWALLS)
+  =================================================================== -->
+  <div id="skinsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md">
+    <div class="ocean-glass-strong rounded-3xl w-full max-w-lg p-6 space-y-5 card-enter">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-xl font-black text-white">Krill Skins Locker</h3>
+          <p class="text-xs text-cyan-200/75">Every skin is 100% free & unlocked forever.</p>
+        </div>
+        <button id="closeSkinsModalBtn" type="button" class="btn-ghost w-9 h-9 rounded-xl flex items-center justify-center text-sky-200 font-bold text-lg">✕</button>
+      </div>
+
+      <div id="skinsGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <!-- Skin cards injected via JS -->
+      </div>
+
+      <button id="confirmSkinsBtn" type="button" class="btn-dive w-full py-3 rounded-2xl font-bold text-white">
+        Done
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       APPLICATION JAVASCRIPT
+  =================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* =====================================================================
+         1. CONFIGURATION: TIERS, OCEAN ZONES, KRILL SKINS
+      ===================================================================== */
+      const TIERS = {
+        plankton: {
+          key: 'plankton',
+          label: 'Plankton',
+          points: 10,
+          meters: 100,
+          emoji: '🦠',
+          gridEmoji: '⬜',
+          color: '#cbd5e1',
+          bgClass: 'bg-slate-500/25 border-slate-300/35 text-slate-100',
+          badgeClass: 'bg-slate-500/30 text-slate-200 border-slate-300/30',
+          remarks: [
+            'Right on the surface! Everyone thought of that one first.',
+            'Floating with the top-layer crowd — safe, steady plankton!',
+            'Classic first instinct. Dive a little weirder next time!',
+            'Swimming right at sea level with the whole school.'
+          ]
+        },
+        tooClever: {
+          key: 'tooClever',
+          label: 'Too Clever',
+          points: 15,
+          meters: 150,
+          emoji: '😏',
+          gridEmoji: '🟧',
+          color: '#fdba74',
+          bgClass: 'bg-orange-500/25 border-orange-300/40 text-orange-100',
+          badgeClass: 'bg-orange-500/30 text-orange-200 border-orange-300/35',
+          remarks: [
+            'Aha! The classic "trying to be quirky" pick everyone also picks!',
+            'Clever minds think alike — crowded right below the surface!',
+            'You tried to outsmart the ocean, and 10,000 others had the same idea!',
+            'A fun curveball, though plenty of divers brought the same map.'
+          ]
+        },
+        schooler: {
+          key: 'schooler',
+          label: 'Schooler',
+          points: 30,
+          meters: 300,
+          emoji: '🐟',
+          gridEmoji: '🟦',
+          color: '#7dd3fc',
+          bgClass: 'bg-sky-500/25 border-sky-300/45 text-sky-100',
+          badgeClass: 'bg-sky-500/30 text-sky-200 border-sky-300/35',
+          remarks: [
+            'Solid pick! Swimming comfortably through the sunlit reef.',
+            'Respectable depth — cruising smoothly with a medium school.',
+            'Good trivia radar! Pushing down toward the twilight layer.',
+            'Steady bubbles and a clean dive into blue water.'
+          ]
+        },
+        rare: {
+          key: 'rare',
+          label: 'Rare',
+          points: 60,
+          meters: 600,
+          emoji: '💎',
+          gridEmoji: '🟩',
+          color: '#6ee7b7',
+          bgClass: 'bg-emerald-500/25 border-emerald-300/50 text-emerald-100',
+          badgeClass: 'bg-emerald-500/30 text-emerald-200 border-emerald-300/40',
+          remarks: [
+            'Off the beaten current! That sunk you deep into the blue.',
+            'Sharp pull! Most divers swim right past that one.',
+            'Bioluminescent brainwaves — a genuinely rare catch!',
+            'Nice plunge! You left the surface crowd far behind.'
+          ]
+        },
+        deepCut: {
+          key: 'deepCut',
+          label: 'Deep Cut',
+          points: 85,
+          meters: 850,
+          emoji: '🔮',
+          gridEmoji: '🟪',
+          color: '#d8b4fe',
+          bgClass: 'bg-violet-500/30 border-violet-300/60 text-violet-100',
+          badgeClass: 'bg-violet-500/35 text-violet-200 border-violet-300/45',
+          remarks: [
+            'Connoisseur trivia! Very few krill ever swim down here.',
+            'Abyssal brilliance! That answer echoes in the midnight zone.',
+            'Whoa — serious deep-sea scholar energy right there!',
+            'An elite pull from the dark trenches of memory.'
+          ]
+        },
+        krillion: {
+          key: 'krillion',
+          label: 'One in a Krillion',
+          points: 100,
+          meters: 1000,
+          emoji: '👑',
+          gridEmoji: '🌟',
+          color: '#fde047',
+          bgClass: 'bg-gradient-to-br from-amber-400/35 via-yellow-500/25 to-teal-400/35 border-amber-300/80 text-amber-100 krillion-aura',
+          badgeClass: 'bg-amber-400/30 text-amber-200 border-amber-300/60',
+          remarks: [
+            'LEGENDARY! A true One in a Krillion deep-trench masterpiece!',
+            'Maximum plunge! The Hadal Trench lights up for that answer!',
+            'Unbelievable pull — practically nobody else on Earth thought of that!',
+            'Pure bioluminescent gold! You just shattered the pressure gauge!'
+          ]
+        },
+        missed: {
+          key: 'missed',
+          label: 'Surfaced',
+          points: 0,
+          meters: 0,
+          emoji: '🫧',
+          gridEmoji: '⬛',
+          color: '#94a3b8',
+          bgClass: 'bg-rose-500/20 border-rose-300/35 text-rose-100',
+          badgeClass: 'bg-rose-500/25 text-rose-200 border-rose-300/30',
+          remarks: [
+            'Floated back up on this one — check out the rare gems below!'
+          ]
+        }
+      };
+
+      const TIER_ORDER = ['plankton', 'tooClever', 'schooler', 'rare', 'deepCut', 'krillion'];
+
+      const OCEAN_ZONES = [
+        { min: 0,    max: 1000, name: 'Sunlight Zone',  badgeColor: 'text-cyan-200',   topRGB: [10, 145, 185],  botRGB: [12, 74, 114] },
+        { min: 1000, max: 2500, name: 'Twilight Zone',  badgeColor: 'text-sky-200',    topRGB: [12, 72, 128],   botRGB: [8, 28, 68] },
+        { min: 2500, max: 4500, name: 'Midnight Zone',  badgeColor: 'text-indigo-200', topRGB: [7, 22, 56],     botRGB: [3, 9, 28] },
+        { min: 4500, max: 6500, name: 'Abyssal Zone',   badgeColor: 'text-violet-200', topRGB: [16, 10, 44],    botRGB: [4, 3, 16] },
+        { min: 6500, max: 999999, name: 'Hadal Trench', badgeColor: 'text-amber-200',  topRGB: [10, 5, 22],     botRGB: [2, 1, 8] }
+      ];
+
+      const KRILL_SKINS = [
+        { id: 'coral',  name: 'Classic Coral',        body: '#FF6B6B', accent: '#FFA5A5', glow: 'rgba(255, 107, 107, 0.55)', eye: '#1e1b4b' },
+        { id: 'sakura', name: 'Sakura Pastel',        body: '#FF9EB5', accent: '#FFD1DC', glow: 'rgba(255, 158, 181, 0.55)', eye: '#3b0764' },
+        { id: 'cyan',   name: 'Bioluminescent Cyan',  body: '#00F5D4', accent: '#99F6E4', glow: 'rgba(0, 245, 212, 0.65)',   eye: '#042f2e' },
+        { id: 'gold',   name: 'Abyssal Gold',         body: '#FFD166', accent: '#FEF08A', glow: 'rgba(255, 209, 102, 0.65)', eye: '#451a03' },
+        { id: 'violet', name: 'Cosmic Violet',        body: '#B388FF', accent: '#E9D5FF', glow: 'rgba(179, 136, 255, 0.6)',  eye: '#1e1b4b' },
+        { id: 'pearl',  name: 'Ghostly Pearl',        body: '#F8FAFC', accent: '#BAE6FD', glow: 'rgba(248, 250, 252, 0.6)',  eye: '#0f172a' }
+      ];
+
+      /* =====================================================================
+         2. BUILT-IN CURATED TRIVIA LIBRARY (49 PROMPTS ACROSS 7 PACKS)
+            Each prompt has 28-45+ tiered answers across all 6 rarity tiers.
+      ===================================================================== */
+      const PACK_META = [
+        { id: 'all',       name: 'All Mix',              icon: '🌊' },
+        { id: 'geography', name: 'Geography',            icon: '🌍' },
+        { id: 'food',      name: 'Food & Drink',         icon: '🍜' },
+        { id: 'science',   name: 'Science & Nature',     icon: '🧪' },
+        { id: 'animals',   name: 'Animals',              icon: '🐙' },
+        { id: 'media',     name: 'Movies & Music',       icon: '🎬' },
+        { id: 'gaming',    name: 'Gaming & Pop Culture', icon: '🎮' },
+        { id: 'words',     name: 'Word & Letters',       icon: '🔤' }
+      ];
+
+      // Compact helper to build prompt objects cleanly
+      function makePrompt(pack, q, tiers, aliases = {}) {
+        return { pack, q, tiers, aliases };
+      }
+
+      const BUILTIN_PROMPTS = [
+        /* -------------------- GEOGRAPHY (7) -------------------- */
+        makePrompt('geography', 'Name a country in Europe', {
+          plankton: ['France', 'Germany', 'Italy', 'Spain', 'United Kingdom', 'England', 'Portugal'],
+          tooClever: ['Iceland', 'Vatican City', 'Liechtenstein', 'Switzerland', 'Monaco', 'Andorra'],
+          schooler: ['Poland', 'Greece', 'Sweden', 'Norway', 'Netherlands', 'Belgium', 'Ireland', 'Austria', 'Denmark', 'Finland', 'Czechia', 'Hungary', 'Romania'],
+          rare: ['Croatia', 'Slovenia', 'Slovakia', 'Bulgaria', 'Estonia', 'Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Serbia', 'Albania', 'Cyprus'],
+          deepCut: ['Montenegro', 'North Macedonia', 'Moldova', 'Bosnia and Herzegovina', 'Kosovo', 'Belarus', 'Georgia', 'Armenia'],
+          krillion: ['San Marino', 'Faroe Islands', 'Transnistria', 'Azerbaijan']
+        }, { uk: 'United Kingdom', holland: 'Netherlands', czechrepublic: 'Czechia', vatican: 'Vatican City', bosnia: 'Bosnia and Herzegovina', macedonia: 'North Macedonia', greatbritain: 'United Kingdom' }),
+
+        makePrompt('geography', 'Name a US state', {
+          plankton: ['California', 'Texas', 'New York', 'Florida', 'Hawaii', 'Alaska'],
+          tooClever: ['Rhode Island', 'Wyoming', 'Delaware', 'Montana', 'Vermont', 'Maine'],
+          schooler: ['Illinois', 'Ohio', 'Georgia', 'Michigan', 'Washington', 'Colorado', 'Arizona', 'Virginia', 'Pennsylvania', 'Nevada', 'Oregon', 'Massachusetts', 'North Carolina'],
+          rare: ['Indiana', 'Missouri', 'Wisconsin', 'Minnesota', 'Tennessee', 'Alabama', 'Louisiana', 'Kentucky', 'Oklahoma', 'Iowa', 'Kansas', 'Utah', 'Connecticut'],
+          deepCut: ['Arkansas', 'Nebraska', 'Idaho', 'West Virginia', 'New Hampshire', 'New Mexico', 'South Carolina', 'Mississippi', 'Maryland', 'New Jersey'],
+          krillion: ['North Dakota', 'South Dakota']
+        }),
+
+        makePrompt('geography', 'Name a country in Asia', {
+          plankton: ['China', 'Japan', 'India', 'South Korea', 'Thailand', 'Vietnam'],
+          tooClever: ['Kazakhstan', 'Bhutan', 'North Korea', 'Mongolia', 'Singapore', 'Nepal'],
+          schooler: ['Indonesia', 'Philippines', 'Malaysia', 'Pakistan', 'Iran', 'Iraq', 'Saudi Arabia', 'Israel', 'Turkey', 'Taiwan', 'Cambodia', 'Sri Lanka'],
+          rare: ['Laos', 'Myanmar', 'Bangladesh', 'Jordan', 'Lebanon', 'Oman', 'Qatar', 'Kuwait', 'United Arab Emirates', 'Afghanistan', 'Uzbekistan', 'Maldives'],
+          deepCut: ['Kyrgyzstan', 'Tajikistan', 'Turkmenistan', 'Bahrain', 'Yemen', 'Syria', 'Armenia', 'Azerbaijan', 'Georgia'],
+          krillion: ['Brunei', 'Timor-Leste', 'East Timor', 'Palestine']
+        }, { uae: 'United Arab Emirates', burma: 'Myanmar', korea: 'South Korea', timorleste: 'Timor-Leste' }),
+
+        makePrompt('geography', 'Name a river anywhere in the world', {
+          plankton: ['Nile', 'Amazon', 'Mississippi', 'Thames', 'Yangtze', 'Colorado'],
+          tooClever: ['Styx', 'Euphrates', 'Tigris', 'Congo', 'Ganges', 'Danube'],
+          schooler: ['Seine', 'Rhine', 'Mekong', 'Yellow River', 'Rio Grande', 'Hudson', 'Volga', 'Missouri', 'Indus', 'Niger', 'Zambezi'],
+          rare: ['Orinoco', 'Po', 'Elbe', 'Loire', 'Tiber', 'Yukon', 'Columbia', 'Brahmaputra', 'Irrawaddy', 'Parana', 'Murray', 'Rhone'],
+          deepCut: ['Lena', 'Ob', 'Yenisei', 'Amur', 'Limpopo', 'Orange River', 'Salween', 'Vistula', 'Dnieper', 'Tagus', 'Ebro', 'Mackenzie'],
+          krillion: ['Okavango', 'Kolyma', 'Chao Phraya', 'Essequibo', 'Shatt al-Arab', 'Drava', 'Pechora', 'Sepik', 'Godavari', 'Ural']
+        }, { nileriver: 'Nile', amazonriver: 'Amazon', mississippiriver: 'Mississippi', riverthames: 'Thames', huanghe: 'Yellow River' }),
+
+        makePrompt('geography', 'Name a world capital city', {
+          plankton: ['Paris', 'London', 'Tokyo', 'Washington D.C.', 'Rome', 'Berlin', 'Madrid'],
+          tooClever: ['Reykjavik', 'Canberra', 'Ottawa', 'Ulaanbaatar', 'Brasilia', 'Kathmandu'],
+          schooler: ['Seoul', 'Beijing', 'Bangkok', 'Hanoi', 'Cairo', 'Athens', 'Moscow', 'Dublin', 'Lisbon', 'Amsterdam', 'Vienna', 'Prague', 'Stockholm', 'Oslo', 'Mexico City'],
+          rare: ['Helsinki', 'Warsaw', 'Budapest', 'Bucharest', 'Sofia', 'Nairobi', 'Lima', 'Bogota', 'Santiago', 'Manila', 'Jakarta', 'Riyadh', 'Ankara', 'Wellington'],
+          deepCut: ['Tallinn', 'Riga', 'Vilnius', 'Ljubljana', 'Zagreb', 'Tbilisi', 'Yerevan', 'Baku', 'Astana', 'Tashkent', 'Kigali', 'Accra', 'Dakar', 'Montevideo'],
+          krillion: ['Thimphu', 'Bandar Seri Begawan', 'Ouagadougou', 'Sri Jayawardenepura Kotte', 'Vaduz', 'Ngerulmud', 'Funafuti', 'Palikir', 'Gitega', 'Mbabane', 'Bishkek', 'Ashgabat', 'Dushanbe']
+        }, { washington: 'Washington D.C.', washingtondc: 'Washington D.C.', dc: 'Washington D.C.', nursultan: 'Astana' }),
+
+        makePrompt('geography', 'Name a country in Africa', {
+          plankton: ['Egypt', 'South Africa', 'Nigeria', 'Kenya', 'Morocco', 'Ghana'],
+          tooClever: ['Madagascar', 'Chad', 'Djibouti', 'Zimbabwe', 'Ethiopia', 'Congo'],
+          schooler: ['Tanzania', 'Uganda', 'Algeria', 'Tunisia', 'Libya', 'Sudan', 'Senegal', 'Cameroon', 'Ivory Coast', 'Angola', 'Botswana', 'Namibia'],
+          rare: ['Rwanda', 'Zambia', 'Mozambique', 'Somalia', 'Mali', 'Niger', 'Senegal', 'Gabon', 'Togo', 'Benin', 'Liberia', 'Sierra Leone', 'Malawi', 'Gambia'],
+          deepCut: ['Burkina Faso', 'Eritrea', 'Mauritania', 'Mauritius', 'Seychelles', 'Lesotho', 'Eswatini', 'Burundi', 'Central African Republic', 'South Sudan', 'Equatorial Guinea'],
+          krillion: ['Sao Tome and Principe', 'Comoros', 'Cabo Verde', 'Cape Verde', 'Guinea-Bissau']
+        }, { drc: 'Congo', cotedivoire: 'Ivory Coast', swaziland: 'Eswatini', car: 'Central African Republic' }),
+
+        makePrompt('geography', 'Name an island or island nation', {
+          plankton: ['Hawaii', 'Australia', 'Greenland', 'Iceland', 'Japan', 'Cuba', 'Jamaica'],
+          tooClever: ['Madagascar', 'Easter Island', 'Galapagos', 'Borneo', 'Atlantis', 'Bali'],
+          schooler: ['Ireland', 'Great Britain', 'Sicily', 'Crete', 'Puerto Rico', 'Taiwan', 'Sri Lanka', 'Cyprus', 'Malta', 'Fiji', 'Bahamas', 'Barbados', 'Manhattan'],
+          rare: ['Corsica', 'Sardinia', 'Sumatra', 'Java', 'Honshu', 'Hokkaido', 'Tasmania', 'Zanzibar', 'Santorini', 'Ibiza', 'Mallorca', 'Capri', 'Bora Bora', 'Tahiti'],
+          deepCut: ['Sulawesi', 'Luzon', 'Mindanao', 'Newfoundland', 'Baffin Island', 'Gotland', 'Skye', 'Madeira', 'Tenerife', 'Reunion', 'Curacao', 'Aruba', 'Nauru'],
+          krillion: ['Socotra', 'Svalbard', 'Kerguelen', 'Pitcairn', 'Tuvalu', 'Kiribati', 'Niue', 'Tristan da Cunha', 'Sakhalin', 'Novaya Zemlya', 'Hispaniola', 'Palawan']
+        }),
+
+        /* -------------------- FOOD & DRINK (7) -------------------- */
+        makePrompt('food', 'Name a fruit', {
+          plankton: ['Apple', 'Banana', 'Orange', 'Strawberry', 'Grape', 'Watermelon', 'Mango'],
+          tooClever: ['Dragonfruit', 'Tomato', 'Avocado', 'Durian', 'Starfruit', 'Kiwi', 'Pomegranate'],
+          schooler: ['Blueberry', 'Pineapple', 'Peach', 'Pear', 'Cherry', 'Lemon', 'Lime', 'Plum', 'Raspberry', 'Blackberry', 'Coconut', 'Papaya', 'Cantaloupe', 'Grapefruit'],
+          rare: ['Apricot', 'Fig', 'Guava', 'Lychee', 'Passionfruit', 'Persimmon', 'Tangerine', 'Clementine', 'Cranberry', 'Nectarine', 'Honeydew', 'Date', 'Jackfruit'],
+          deepCut: ['Rambutan', 'Mangosteen', 'Kumquat', 'Quince', 'Pomelo', 'Mulberry', 'Boysenberry', 'Gooseberry', 'Elderberry', 'Tamarind', 'Longan', 'Plantain', 'Soursop'],
+          krillion: ['Cherimoya', 'Salak', 'Jabuticaba', 'Feijoa', 'Ackee', 'Pawpaw', 'Loquat', 'Medlar', 'Cloudberry', 'Miracle Fruit', 'Sapodilla', 'Yuzu', 'Buddhas Hand', 'Horned Melon']
+        }, { dragon: 'Dragonfruit', pitaya: 'Dragonfruit', kiwifruit: 'Kiwi', carambola: 'Starfruit', passion: 'Passionfruit' }),
+
+        makePrompt('food', 'Name a type of cheese', {
+          plankton: ['Cheddar', 'Mozzarella', 'Parmesan', 'Swiss', 'American', 'Gouda'],
+          tooClever: ['Brie', 'Roquefort', 'Gorgonzola', 'Camembert', 'Limburger', 'Halloumi'],
+          schooler: ['Feta', 'Provolone', 'Pepper Jack', 'Monterey Jack', 'Blue Cheese', 'Ricotta', 'Cream Cheese', 'Cottage Cheese', 'Colby', 'Gruyere', 'Muenster'],
+          rare: ['Manchego', 'Havarti', 'Asiago', 'Edam', 'Emmental', 'Mascarpone', 'Pecorino', 'Burrata', 'Fontina', 'Paneer', 'Cotija', 'Stilton', 'Jarlsberg'],
+          deepCut: ['Raclette', 'Comte', 'Taleggio', 'Chevre', 'Queso Fresco', 'Oaxaca', 'Red Leicester', 'Wensleydale', 'Boursin', 'Port Salut', 'Bocconcini'],
+          krillion: ['Casu Marzu', 'Epoisses', 'Mimolette', 'Brunost', 'Kasseri', 'Reblochon', 'Saint-Andre', 'Tete de Moine', 'Valencay', 'Oscypek', 'Humboldt Fog', 'Vacherin']
+        }, { parmigiano: 'Parmesan', parmigianoreggiano: 'Parmesan', bleu: 'Blue Cheese', pecorinoromano: 'Pecorino' }),
+
+        makePrompt('food', 'Name a pizza topping', {
+          plankton: ['Pepperoni', 'Cheese', 'Mushrooms', 'Sausage', 'Ham', 'Bacon', 'Onion'],
+          tooClever: ['Pineapple', 'Anchovies', 'Broccoli', 'Corn', 'Egg', 'Kebab'],
+          schooler: ['Olives', 'Green Peppers', 'Jalapenos', 'Spinach', 'Tomatoes', 'Basil', 'Chicken', 'Salami', 'Garlic', 'Extra Cheese', 'Beef'],
+          rare: ['Artichokes', 'Sun-Dried Tomatoes', 'Arugula', 'Prosciutto', 'Ricotta', 'Pesto', 'Meatballs', 'Banana Peppers', 'Capers', 'Feta', 'Red Onion', 'Chorizo'],
+          deepCut: ['Roasted Red Peppers', 'Caramelized Onions', 'Goat Cheese', 'Truffle Oil', 'Nduja', 'Pancetta', 'Soppressata', 'Bresaola', 'Tuna', 'Clams', 'Figs'],
+          krillion: ['Squash Blossoms', 'Hot Honey', 'Mortadella', 'Pistachios', 'Guanciale', 'Ramps', 'Chanterelles', 'Pickles', 'Kimchi', 'Bottarga']
+        }, { mushroom: 'Mushrooms', olive: 'Olives', blackolives: 'Olives', bellpeppers: 'Green Peppers', jalapeno: 'Jalapenos', anchovy: 'Anchovies', rocket: 'Arugula' }),
+
+        makePrompt('food', 'Name a vegetable', {
+          plankton: ['Carrot', 'Broccoli', 'Potato', 'Spinach', 'Lettuce', 'Onion', 'Corn'],
+          tooClever: ['Rutabaga', 'Kohlrabi', 'Asparagus', 'Eggplant', 'Artichoke', 'Brussels Sprout'],
+          schooler: ['Celery', 'Cucumber', 'Peas', 'Green Beans', 'Cauliflower', 'Cabbage', 'Garlic', 'Bell Pepper', 'Zucchini', 'Radish', 'Beet', 'Sweet Potato', 'Kale'],
+          rare: ['Leek', 'Turnip', 'Parsnip', 'Bok Choy', 'Arugula', 'Shallot', 'Fennel', 'Okra', 'Yam', 'Squash', 'Rhubarb', 'Watercress', 'Chard', 'Scallion'],
+          deepCut: ['Jicama', 'Daikon', 'Celeriac', 'Endive', 'Radicchio', 'Broccolini', 'Romanesco', 'Taro', 'Cassava', 'Chayote', 'Lotus Root', 'Bitter Melon', 'Bamboo Shoot'],
+          krillion: ['Salsify', 'Jerusalem Artichoke', 'Cardoon', 'Fiddlehead', 'Samphire', 'Nopales', 'Chicory', 'Crosne', 'Oca', 'Ulluco', 'Purslane', 'Moringa']
+        }, { aubergine: 'Eggplant', courgette: 'Zucchini', beetroot: 'Beet', brusselssprouts: 'Brussels Sprout', springonion: 'Scallion', sunchoke: 'Jerusalem Artichoke' }),
+
+        makePrompt('food', 'Name a dessert or sweet treat', {
+          plankton: ['Ice Cream', 'Cake', 'Cookie', 'Brownie', 'Pie', 'Donut', 'Chocolate'],
+          tooClever: ['Tiramisu', 'Creme Brulee', 'Baklava', 'Macaron', 'Mochi', 'Churro'],
+          schooler: ['Cheesecake', 'Cupcake', 'Pudding', 'Gelato', 'Sorbet', 'Apple Pie', 'Pancakes', 'Waffles', 'Cinnamon Roll', 'Fudge', 'Muffin', 'Eclair', 'Cannoli'],
+          rare: ['Flan', 'Panna Cotta', 'Pavlova', 'Profiterole', 'Cobbler', 'Trifle', 'Biscotti', 'Beignet', 'Mille-Feuille', 'Strudel', 'Souffle', 'Tres Leches', 'Tart'],
+          deepCut: ['Gulab Jamun', 'Knafeh', 'Halva', 'Alfajores', 'Brigadeiro', 'Clafoutis', 'Kouign-Amann', 'Galette', 'Madeleine', 'Financier', 'Zabaglione', 'Affogato', 'Bingsu'],
+          krillion: ['Kaiserschmarrn', 'Pastel de Nata', 'Caneles', 'Dacquoise', 'Sfogliatella', 'Halo-Halo', 'Che Ba Mau', 'Kulfi', 'Lokma', 'Loukoumades', 'Kransekake', 'Croquembouche']
+        }, { cookies: 'Cookie', brownies: 'Brownie', doughnuts: 'Donut', doughnut: 'Donut', macarons: 'Macaron', churros: 'Churro', canele: 'Caneles' }),
+
+        makePrompt('food', 'Name a type of pasta', {
+          plankton: ['Spaghetti', 'Macaroni', 'Penne', 'Fettuccine', 'Lasagna', 'Ravioli'],
+          tooClever: ['Farfalle', 'Orecchiette', 'Orzo', 'Gnocchi', 'Tortellini', 'Bowtie'],
+          schooler: ['Linguine', 'Rigatoni', 'Fusilli', 'Rotini', 'Angel Hair', 'Tagliatelle', 'Ziti', 'Shells', 'Elbow', 'Pappardelle', 'Cannelloni'],
+          rare: ['Bucatini', 'Cavatappi', 'Cavatelli', 'Conchiglie', 'Gemelli', 'Manicotti', 'Mostaccioli', 'Paccheri', 'Vermicelli', 'Capellini', 'Ditalini', 'Pastina'],
+          deepCut: ['Trofie', 'Mafaldine', 'Strozzapreti', 'Agnolotti', 'Cappelletti', 'Mezze Maniche', 'Radiatori', 'Campanelle', 'Casarecce', 'Pici', 'Bigoli', 'Malloreddus'],
+          krillion: ['Corzetti', 'Fregola', 'Pizzoccheri', 'Garganelli', 'Busiatte', 'Testaroli', 'Tajarin', 'Cencioni', 'Lorighittas', 'Sagne', 'Su Filindeu', 'Anolini']
+        }, { lasagne: 'Lasagna', bowtiepasta: 'Farfalle', elbows: 'Elbow' }),
+
+        makePrompt('food', 'Name a spice or herb', {
+          plankton: ['Salt', 'Pepper', 'Cinnamon', 'Basil', 'Oregano', 'Garlic', 'Ginger'],
+          tooClever: ['Saffron', 'Cardamom', 'Turmeric', 'Cilantro', 'Star Anise', 'Nutmeg'],
+          schooler: ['Paprika', 'Cumin', 'Thyme', 'Rosemary', 'Parsley', 'Mint', 'Dill', 'Sage', 'Chives', 'Clove', 'Cayenne', 'Chili Powder', 'Bay Leaf', 'Vanilla'],
+          rare: ['Coriander', 'Fennel', 'Tarragon', 'Marjoram', 'Allspice', 'Mustard Seed', 'Anise', 'Caraway', 'Lemongrass', 'Lavender', 'Poppy Seed', 'Sesame', 'Curry Leaf'],
+          deepCut: ['Sumac', 'Fenugreek', 'Mace', 'Savory', 'Chervil', 'Galangal', 'Kaffir Lime', 'Juniper Berry', 'Sichuan Pepper', 'Wasabi', 'Horseradish', 'Borage'],
+          krillion: ['Asafoetida', 'Grains of Paradise', 'Mahlab', 'Ajwain', 'Epazote', 'Lovage', 'Shiso', 'Nigella', 'Annatto', 'Achiote', 'Long Pepper', 'Zedoary', 'Hyssop']
+        }, { blackpepper: 'Pepper', cloves: 'Clove', bayleaves: 'Bay Leaf', hing: 'Asafoetida' }),
+
+        /* -------------------- SCIENCE & NATURE (7) -------------------- */
+        makePrompt('science', 'Name a chemical element', {
+          plankton: ['Hydrogen', 'Oxygen', 'Carbon', 'Gold', 'Iron', 'Helium', 'Silver'],
+          tooClever: ['Bismuth', 'Tungsten', 'Uranium', 'Einsteinium', 'Oganesson', 'Mercury', 'Plutonium'],
+          schooler: ['Nitrogen', 'Sodium', 'Chlorine', 'Copper', 'Neon', 'Calcium', 'Potassium', 'Aluminum', 'Zinc', 'Lead', 'Tin', 'Nickel', 'Sulfur', 'Lithium', 'Platinum', 'Argon'],
+          rare: ['Silicon', 'Phosphorus', 'Magnesium', 'Titanium', 'Cobalt', 'Manganese', 'Chromium', 'Boron', 'Fluorine', 'Iodine', 'Bromine', 'Barium', 'Krypton', 'Xenon', 'Radon', 'Arsenic'],
+          deepCut: ['Antimony', 'Gallium', 'Germanium', 'Selenium', 'Strontium', 'Zirconium', 'Molybdenum', 'Palladium', 'Cadmium', 'Indium', 'Tellurium', 'Cesium', 'Beryllium', 'Vanadium', 'Scandium', 'Osmium', 'Iridium'],
+          krillion: ['Praseodymium', 'Yttrium', 'Ytterbium', 'Dysprosium', 'Holmium', 'Erbium', 'Thulium', 'Lutetium', 'Hafnium', 'Tantalum', 'Rhenium', 'Thallium', 'Astatine', 'Francium', 'Promethium', 'Gadolinium', 'Terbium', 'Technetium', 'Niobium', 'Ruthenium', 'Rhodium']
+        }, { aluminium: 'Aluminum', sulphur: 'Sulfur', caesium: 'Cesium' }),
+
+        makePrompt('science', 'Name a planet, moon, or dwarf planet in our solar system', {
+          plankton: ['Earth', 'Mars', 'Jupiter', 'Saturn', 'Venus', 'Mercury', 'Neptune', 'Uranus'],
+          tooClever: ['Pluto', 'Titan', 'Europa', 'Moon', 'Ceres', 'Io'],
+          schooler: ['Ganymede', 'Callisto', 'Phobos', 'Deimos', 'Triton', 'Enceladus', 'Charon', 'Eris'],
+          rare: ['Mimas', 'Rhea', 'Iapetus', 'Dione', 'Tethys', 'Miranda', 'Titania', 'Oberon', 'Ariel', 'Umbriel', 'Makemake', 'Haumea'],
+          deepCut: ['Hyperion', 'Phoebe', 'Amalthea', 'Nereid', 'Proteus', 'Sedna', 'Quaoar', 'Orcus', 'Gonggong', 'Nix', 'Hydra', 'Janus', 'Epimetheus'],
+          krillion: ['Pan', 'Atlas', 'Prometheus', 'Pandora', 'Puck', 'Despina', 'Galatea', 'Larissa', 'Styx', 'Kerberos', 'Varuna', 'Ixion', 'Salacia', 'Vanth', 'Dysnomia', 'Methone']
+        }, { luna: 'Moon', themoon: 'Moon' }),
+
+        makePrompt('science', 'Name a human body bone or organ', {
+          plankton: ['Heart', 'Brain', 'Lungs', 'Liver', 'Stomach', 'Skull', 'Rib'],
+          tooClever: ['Appendix', 'Femur', 'Spleen', 'Pancreas', 'Patella', 'Coccyx', 'Clavicle'],
+          schooler: ['Kidney', 'Skin', 'Spine', 'Pelvis', 'Humerus', 'Tibia', 'Fibula', 'Radius', 'Ulna', 'Jaw', 'Sternum', 'Intestine', 'Bladder', 'Gallbladder', 'Esophagus'],
+          rare: ['Scapula', 'Mandible', 'Vertebra', 'Metacarpal', 'Metatarsal', 'Phalanges', 'Tarsal', 'Carpal', 'Trachea', 'Thyroid', 'Thymus', 'Diaphragm', 'Pituitary', 'Larynx'],
+          deepCut: ['Hyoid', 'Sacrum', 'Maxilla', 'Zygomatic', 'Sphenoid', 'Ethmoid', 'Calcaneus', 'Talus', 'Adrenal Gland', 'Pineal Gland', 'Duodenum', 'Jejunum', 'Ileum', 'Parathyroid'],
+          krillion: ['Stapes', 'Incus', 'Malleus', 'Vomer', 'Lacrimal', 'Pisiform', 'Triquetrum', 'Scaphoid', 'Lunate', 'Hamate', 'Cuboid', 'Navicular', 'Mesentery', 'Omentum', 'Epididymis']
+        }, { lung: 'Lungs', kidneys: 'Kidney', ribs: 'Rib', kneecap: 'Patella', tailbone: 'Coccyx', collarbone: 'Clavicle', shoulderblade: 'Scapula', jawbone: 'Mandible', breastbone: 'Sternum', backbone: 'Spine' }),
+
+        makePrompt('science', 'Name a type of weather or atmospheric phenomenon', {
+          plankton: ['Rain', 'Snow', 'Wind', 'Tornado', 'Hurricane', 'Thunderstorm', 'Sunny'],
+          tooClever: ['Aurora Borealis', 'Rainbow', 'Monsoon', 'Typhoon', 'Blizzard', 'Hail'],
+          schooler: ['Fog', 'Sleet', 'Drizzle', 'Mist', 'Lightning', 'Cyclone', 'Drought', 'Heatwave', 'Frost', 'Dew', 'Gale', 'Breeze', 'Squall', 'Sandstorm'],
+          rare: ['Waterspout', 'Dust Devil', 'Freezing Rain', 'Ice Storm', 'Haboob', 'Derecho', 'Microburst', 'Sun Dog', 'Mirage', 'Cloudburst', 'Chinook', 'Smog'],
+          deepCut: ['Graupel', 'Virga', 'Ball Lightning', 'St Elmos Fire', 'Fire Whirl', 'Thundersnow', 'Supercell', 'Katabatic Wind', 'Sirocco', 'Foehn', 'Halos', 'Brocken Spectre'],
+          krillion: ['Petrichor', 'Sprite', 'Blue Jet', 'Nacreous Cloud', 'Noctilucent Cloud', 'Brinicle', 'Diamond Dust', 'Rime', 'Hoarfrost', 'Green Flash', 'Morning Glory Cloud', 'Fata Morgana']
+        }, { northernlights: 'Aurora Borealis', aurora: 'Aurora Borealis', sundog: 'Sun Dog', thunder: 'Thunderstorm', storm: 'Thunderstorm', cloudy: 'Fog' }),
+
+        makePrompt('science', 'Name a gemstone or mineral', {
+          plankton: ['Diamond', 'Ruby', 'Emerald', 'Sapphire', 'Gold', 'Quartz', 'Pearl'],
+          tooClever: ['Obsidian', 'Amethyst', 'Opal', 'Jade', 'Topaz', 'Pyrite', 'Bismuth'],
+          schooler: ['Turquoise', 'Garnet', 'Amber', 'Onyx', 'Peridot', 'Aquamarine', 'Mica', 'Granite', 'Marble', 'Talc', 'Gypsum', 'Calcite', 'Feldspar'],
+          rare: ['Citrine', 'Lapis Lazuli', 'Malachite', 'Moonstone', 'Agate', 'Jasper', 'Onyx', 'Tourmaline', 'Zircon', 'Beryl', 'Fluorite', 'Hematite', 'Galena', 'Halite'],
+          deepCut: ['Tanzanite', 'Alexandrite', 'Labradorite', 'Rhodochrosite', 'Aventurine', 'Carnelian', 'Chalcedony', 'Spinel', 'Chrysoberyl', 'Kyanite', 'Cinnabar', 'Azurite', 'Selenite', 'Apatite'],
+          krillion: ['Painite', 'Benitoite', 'Taaffeite', 'Grandidierite', 'Jeremejevite', 'Musgravite', 'Poudretteite', 'Larimar', 'Moldavite', 'Charoite', 'Sugilite', 'Kunzite', 'Morganite', 'Ammolite', 'Zoisite', 'Stibnite']
+        }, { foolsgold: 'Pyrite', lapis: 'Lapis Lazuli' }),
+
+        makePrompt('science', 'Name a type of tree', {
+          plankton: ['Oak', 'Pine', 'Maple', 'Palm', 'Birch', 'Willow', 'Apple'],
+          tooClever: ['Baobab', 'Redwood', 'Bonsai', 'Sequoia', 'Cherry Blossom', 'Bamboo'],
+          schooler: ['Cedar', 'Spruce', 'Fir', 'Elm', 'Ash', 'Walnut', 'Chestnut', 'Poplar', 'Cypress', 'Eucalyptus', 'Magnolia', 'Sycamore', 'Aspen', 'Beech', 'Olive'],
+          rare: ['Hickory', 'Mahogany', 'Teak', 'Banyan', 'Mangrove', 'Dogwood', 'Hawthorn', 'Alder', 'Larch', 'Juniper', 'Yew', 'Hemlock', 'Cottonwood', 'Fig', 'Acacia', 'Ginkgo'],
+          deepCut: ['Catalpa', 'Jacaranda', 'Tamarack', 'Hornbeam', 'Linden', 'Locust', 'Sassafras', 'Persimmon', 'Mulberry', 'Sweetgum', 'Tupelo', 'Balsa', 'Ebony', 'Sandalwood', 'Rowan'],
+          krillion: ['Wollemi Pine', 'Bristlecone Pine', 'Monkey Puzzle', 'Dragon Blood Tree', 'Rainbow Eucalyptus', 'Osage Orange', 'Kauri', 'Zelkova', 'Paulownia', 'Cercidiphyllum', 'Metasequoia', 'Manchineel', 'Kigelia']
+        }, { sakura: 'Cherry Blossom', weepingwillow: 'Willow', palmtree: 'Palm' }),
+
+        makePrompt('science', 'Name a famous scientist or inventor', {
+          plankton: ['Albert Einstein', 'Isaac Newton', 'Nikola Tesla', 'Thomas Edison', 'Charles Darwin', 'Marie Curie'],
+          tooClever: ['Alan Turing', 'Galileo Galilei', 'Stephen Hawking', 'Ada Lovelace', 'Rosalind Franklin', 'Archimedes'],
+          schooler: ['Alexander Graham Bell', 'Benjamin Franklin', 'Louis Pasteur', 'Gregor Mendel', 'Richard Feynman', 'Carl Sagan', 'Wright Brothers', 'Leonardo da Vinci', 'Johannes Gutenberg'],
+          rare: ['Michael Faraday', 'James Clerk Maxwell', 'Niels Bohr', 'Max Planck', 'Erwin Schrodinger', 'Werner Heisenberg', 'Dmitri Mendeleev', 'Alexander Fleming', 'Jane Goodall', 'Katherine Johnson', 'Grace Hopper', 'Robert Oppenheimer'],
+          deepCut: ['Johannes Kepler', 'Nicolaus Copernicus', 'Robert Hooke', 'Antoine Lavoisier', 'Rachel Carson', 'Barbara McClintock', 'Hedy Lamarr', 'Tim Berners-Lee', 'Guglielmo Marconi', 'Enrico Fermi', 'Paul Dirac', 'Srinivasa Ramanujan', 'George Washington Carver'],
+          krillion: ['Emmy Noether', 'Lise Meitner', 'Chien-Shiung Wu', 'Jocelyn Bell Burnell', 'Subrahmanyan Chandrasekhar', 'Ibn al-Haytham', 'Hypatia', 'Mary Anning', 'Amedeo Avogadro', 'Svante Arrhenius', 'C.V. Raman', 'Jagadish Chandra Bose', 'Fritz Haber']
+        }, { einstein: 'Albert Einstein', newton: 'Isaac Newton', tesla: 'Nikola Tesla', edison: 'Thomas Edison', darwin: 'Charles Darwin', curie: 'Marie Curie', turing: 'Alan Turing', galileo: 'Galileo Galilei', hawking: 'Stephen Hawking', feynman: 'Richard Feynman', faraday: 'Michael Faraday', mendel: 'Gregor Mendel', pasteur: 'Louis Pasteur', oppenheimer: 'Robert Oppenheimer', mendeleev: 'Dmitri Mendeleev', bohr: 'Niels Bohr', planck: 'Max Planck', schrodinger: 'Erwin Schrodinger', heisenberg: 'Werner Heisenberg', kepler: 'Johannes Kepler', copernicus: 'Nicolaus Copernicus', lavoisier: 'Antoine Lavoisier', fermi: 'Enrico Fermi', dirac: 'Paul Dirac', bell: 'Alexander Graham Bell', davinci: 'Leonardo da Vinci' }),
+
+        /* -------------------- ANIMALS (7) -------------------- */
+        makePrompt('animals', 'Name a marine or ocean creature', {
+          plankton: ['Shark', 'Whale', 'Dolphin', 'Octopus', 'Fish', 'Jellyfish', 'Crab', 'Starfish'],
+          tooClever: ['Krill', 'Narwhal', 'Axolotl', 'Blobfish', 'Anglerfish', 'Mantis Shrimp', 'Orca'],
+          schooler: ['Squid', 'Lobster', 'Shrimp', 'Sea Turtle', 'Seahorse', 'Stingray', 'Seal', 'Sea Lion', 'Walrus', 'Clam', 'Oyster', 'Mussel', 'Eel', 'Clownfish', 'Tuna', 'Salmon'],
+          rare: ['Manatee', 'Dugong', 'Manta Ray', 'Barracuda', 'Swordfish', 'Marlin', 'Pufferfish', 'Sea Urchin', 'Sea Anemone', 'Coral', 'Barnacle', 'Scallop', 'Conch', 'Beluga', 'Porpoise', 'Cuttlefish'],
+          deepCut: ['Nautilus', 'Coelacanth', 'Sunfish', 'Mola Mola', 'Oarfish', 'Vampire Squid', 'Giant Isopod', 'Nudibranch', 'Sea Cucumber', 'Lamprey', 'Hagfish', 'Moray Eel', 'Lionfish', 'Stonefish', 'Grouper'],
+          krillion: ['Siphonophore', 'Ctenophore', 'Comb Jelly', 'Yeti Crab', 'Goblin Shark', 'Frilled Shark', 'Barreleye', 'Dumbo Octopus', 'Vaquita', 'Pyrosome', 'Sea Angel', 'Leafy Seadragon', 'Bobbit Worm', 'Tardigrade', 'Salp', 'Chimaera']
+        }, { killerwhale: 'Orca', greatwhiteshark: 'Shark', bluewhale: 'Whale', turtle: 'Sea Turtle', seastar: 'Starfish', mola: 'Mola Mola' }),
+
+        makePrompt('animals', 'Name a breed of dog', {
+          plankton: ['Golden Retriever', 'Labrador', 'German Shepherd', 'Poodle', 'Bulldog', 'Beagle', 'Chihuahua'],
+          tooClever: ['Corgi', 'Shiba Inu', 'Dachshund', 'Pug', 'Husky', 'Pomeranian', 'Dalmatian'],
+          schooler: ['Rottweiler', 'Boxer', 'Border Collie', 'Pit Bull', 'Great Dane', 'Doberman', 'Shih Tzu', 'Yorkshire Terrier', 'Australian Shepherd', 'French Bulldog', 'Maltese', 'Cocker Spaniel', 'Saint Bernard'],
+          rare: ['Samoyed', 'Akita', 'Chow Chow', 'Greyhound', 'Whippet', 'Basset Hound', 'Bloodhound', 'Mastiff', 'Newfoundland', 'Bernese Mountain Dog', 'Boston Terrier', 'Jack Russell', 'Weimaraner', 'Bichon Frise'],
+          deepCut: ['Basenji', 'Borzoi', 'Saluki', 'Afghan Hound', 'Irish Wolfhound', 'Papillon', 'Vizsla', 'Rhodesian Ridgeback', 'Malinois', 'Keeshond', 'Alaskan Malamute', 'Cavalier King Charles Spaniel', 'Lhasa Apso', 'Shar Pei'],
+          krillion: ['Xoloitzcuintli', 'Komondor', 'Puli', 'Azawakh', 'Schipperke', 'Lagotto Romagnolo', 'Lundehund', 'Otterhound', 'Bergamasco', 'Boerboel', 'Cane Corso', 'Kuvasz', 'Sloughi', 'Chinook', 'Kooikerhondje', 'Mudi']
+        }, { lab: 'Labrador', labradoretriever: 'Labrador', yorkie: 'Yorkshire Terrier', frenchie: 'French Bulldog', wienerdog: 'Dachshund', siberianhusky: 'Husky', aussie: 'Australian Shepherd', pitbull: 'Pit Bull', shiba: 'Shiba Inu', xolo: 'Xoloitzcuintli' }),
+
+        makePrompt('animals', 'Name a species of bird', {
+          plankton: ['Eagle', 'Pigeon', 'Crow', 'Owl', 'Penguin', 'Flamingo', 'Parrot', 'Duck'],
+          tooClever: ['Kiwi', 'Dodo', 'Shoebill', 'Cassowary', 'Ostrich', 'Toucan', 'Peacock'],
+          schooler: ['Hawk', 'Falcon', 'Robin', 'Sparrow', 'Blue Jay', 'Cardinal', 'Seagull', 'Swan', 'Goose', 'Chicken', 'Turkey', 'Hummingbird', 'Woodpecker', 'Pelican', 'Raven', 'Magpie'],
+          rare: ['Albatross', 'Puffin', 'Stork', 'Heron', 'Crane', 'Vulture', 'Condor', 'Kingfisher', 'Swallow', 'Finch', 'Canary', 'Starling', 'Wren', 'Oriole', 'Mockingbird', 'Emu', 'Cockatoo', 'Macaw'],
+          deepCut: ['Secretarybird', 'Kookaburra', 'Lyrebird', 'Quetzal', 'Hoopoe', 'Cormorant', 'Osprey', 'Kestrel', 'Peregrine Falcon', 'Roadrunner', 'Grouse', 'Pheasant', 'Quail', 'Ptarmigan', 'Ibis', 'Spoonbill', 'Plover'],
+          krillion: ['Kakapo', 'Hoatzin', 'Potoo', 'Oilbird', 'Bowerbird', 'Kagu', 'Takahe', 'Frigatebird', 'Booby', 'Sanderling', 'Jacana', 'Cotinga', 'Motmot', 'Trogon', 'Bittern', 'Curlew', 'Snipe', 'Avocet', 'Skimmer']
+        }, { gull: 'Seagull', baldeagle: 'Eagle', bluejay: 'Blue Jay' }),
+
+        makePrompt('animals', 'Name a mammal native to Africa', {
+          plankton: ['Lion', 'Elephant', 'Giraffe', 'Zebra', 'Hippo', 'Rhino', 'Cheetah'],
+          tooClever: ['Meerkat', 'Pangolin', 'Aardvark', 'Okapi', 'Honey Badger', 'Fennec Fox'],
+          schooler: ['Leopard', 'Gorilla', 'Chimpanzee', 'Baboon', 'Hyena', 'Gazelle', 'Antelope', 'Wildebeest', 'Warthog', 'Camel', 'Buffalo', 'Jackal', 'Mongoose'],
+          rare: ['Impala', 'Springbok', 'Kudu', 'Oryx', 'Eland', 'Caracal', 'Serval', 'Mandrill', 'Bonobo', 'Lemur', 'Porcupine', 'African Wild Dog', 'Colobus', 'Vervet Monkey'],
+          deepCut: ['Bongo', 'Gerenuk', 'Dik-Dik', 'Klipspringer', 'Hartebeest', 'Sable Antelope', 'Civet', 'Genet', 'Hyrax', 'Binturong', 'Naked Mole Rat', 'Bushbaby', 'Galago', 'Fossa', 'Indri'],
+          krillion: ['Aardwolf', 'Zorilla', 'Sengi', 'Elephant Shrew', 'Tenrec', 'Aye-Aye', 'Sifaka', 'Gundi', 'Pottos', 'Duiker', 'Nyala', 'Sitatunga', 'Addax', 'Topi', 'Blesbok', 'Bat-Eared Fox']
+        }, { hippopotamus: 'Hippo', rhinoceros: 'Rhino', africanElephant: 'Elephant', gnu: 'Wildebeest', capebuffalo: 'Buffalo', dikdik: 'Dik-Dik', ayeaye: 'Aye-Aye' }),
+
+        makePrompt('animals', 'Name an insect or arachnid', {
+          plankton: ['Ant', 'Bee', 'Spider', 'Butterfly', 'Mosquito', 'Fly', 'Cockroach'],
+          tooClever: ['Praying Mantis', 'Scorpion', 'Tarantula', 'Black Widow', 'Ladybug', 'Firefly'],
+          schooler: ['Wasp', 'Hornet', 'Grasshopper', 'Cricket', 'Dragonfly', 'Beetle', 'Moth', 'Caterpillar', 'Flea', 'Tick', 'Termite', 'Bumblebee', 'Daddy Longlegs'],
+          rare: ['Cicada', 'Locust', 'Earwig', 'Silverfish', 'Aphid', 'Weevil', 'Stink Bug', 'Stick Bug', 'Leaf Insect', 'Damselfly', 'Mayfly', 'Horsefly', 'Mite', 'Chigger', 'Brown Recluse', 'Wolf Spider'],
+          deepCut: ['Scarab', 'Hercules Beetle', 'Stag Beetle', 'Dung Beetle', 'Atlas Moth', 'Luna Moth', 'Katydid', 'Lacewing', 'Antlion', 'Caddisfly', 'Stonefly', 'Water Strider', 'Orb Weaver', 'Jumping Spider', 'Whip Scorpion'],
+          krillion: ['Camel Spider', 'Solifuge', 'Vinegaroon', 'Pseudoscorpion', 'Amblypygi', 'Tailless Whip Scorpion', 'Dobsonfly', 'Scorpionfly', 'Thrips', 'Springtail', 'Tsetse Fly', 'Botfly', 'Velvet Ant', 'Assassin Bug', 'Wheel Bug', 'Treehopper', 'Planthopper', 'Goliath Birdeater']
+        }, { mantis: 'Praying Mantis', ladybird: 'Ladybug', lightningbug: 'Firefly', roach: 'Cockroach', honeybee: 'Bee' }),
+
+        makePrompt('animals', 'Name a reptile or amphibian', {
+          plankton: ['Frog', 'Snake', 'Turtle', 'Lizard', 'Crocodile', 'Alligator', 'Toad'],
+          tooClever: ['Axolotl', 'Chameleon', 'Komodo Dragon', 'Gecko', 'Iguana', 'Salamander'],
+          schooler: ['Tortoise', 'Cobra', 'Python', 'Rattlesnake', 'Viper', 'Boa Constrictor', 'Anaconda', 'Newt', 'Tadpole', 'Bearded Dragon', 'Bullfrog', 'Tree Frog'],
+          rare: ['Caiman', 'Gharial', 'Skink', 'Anole', 'Monitor Lizard', 'Gila Monster', 'Horned Lizard', 'Mamba', 'Taipan', 'Krait', 'Garter Snake', 'Corn Snake', 'Terrapin', 'Poison Dart Frog'],
+          deepCut: ['Tuatara', 'Basilisk', 'Frilled Lizard', 'Blue-Tongued Skink', 'Glass Frog', 'Hellbender', 'Mudpuppy', 'Siren', 'Caecilian', 'Snapping Turtle', 'Leatherback', 'Cottonmouth', 'Copperhead', 'Sidewinder'],
+          krillion: ['Olm', 'Proteus', 'Thorny Devil', 'Gharial', 'Mata Mata', 'Surinam Toad', 'Goliath Frog', 'Titicaca Water Frog', 'Boomslang', 'Gaboon Viper', 'Bushmaster', 'Chuckwalla', 'Uromastyx', 'Tegu', 'Amphisbaena', 'Gavial']
+        }, { croc: 'Crocodile', gator: 'Alligator', boa: 'Boa Constrictor', blackmamba: 'Mamba', kingcobra: 'Cobra' }),
+
+        makePrompt('animals', 'Name a mythical or legendary creature', {
+          plankton: ['Dragon', 'Unicorn', 'Mermaid', 'Vampire', 'Werewolf', 'Phoenix', 'Fairy'],
+          tooClever: ['Kraken', 'Griffin', 'Centaurs', 'Minotaur', 'Pegasus', 'Bigfoot', 'Yeti'],
+          schooler: ['Goblin', 'Troll', 'Elf', 'Dwarf', 'Orc', 'Ogre', 'Giant', 'Gnome', 'Sphinx', 'Hydra', 'Cerberus', 'Cyclops', 'Medusa', 'Gorgon', 'Siren', 'Banshee', 'Leprechaun', 'Genie'],
+          rare: ['Chimera', 'Basilisk', 'Manticore', 'Harpy', 'Satyr', 'Nymph', 'Dryad', 'Gargoyle', 'Golem', 'Wyvern', 'Cockatrice', 'Kitsune', 'Chupacabra', 'Loch Ness Monster', 'Mothman', 'Wendigo', 'Skinwalker'],
+          deepCut: ['Kelpie', 'Selkie', 'Valkyrie', 'Fenrir', 'Jormungandr', 'Roc', 'Thunderbird', 'Quetzalcoatl', 'Oni', 'Tengu', 'Kappa', 'Tanuki', 'Djinn', 'Ifrit', 'Jackalope', 'Jersey Devil', 'Bunyip'],
+          krillion: ['Qilin', 'Kirin', 'Simurgh', 'Anzu', 'Lamassu', 'Peryton', 'Tarrasque', 'Nuckelavee', 'Leshy', 'Baba Yaga', 'Domovoi', 'Rusalka', 'Baku', 'Nue', 'Qalupalik', 'Ahuizotl', 'Ammit', 'Serpopard', 'Tatzelwurm', 'Wolpertinger']
+        }, { centaur: 'Centaurs', gryphon: 'Griffin', nessie: 'Loch Ness Monster', sasquatch: 'Bigfoot', djinni: 'Djinn' }),
+
+        /* -------------------- MOVIES & MUSIC (7) -------------------- */
+        makePrompt('media', 'Name a musical instrument', {
+          plankton: ['Guitar', 'Piano', 'Drums', 'Violin', 'Flute', 'Trumpet', 'Saxophone'],
+          tooClever: ['Theremin', 'Oboe', 'Ukulele', 'Bagpipes', 'Accordion', 'Kazoo', 'Triangle'],
+          schooler: ['Cello', 'Clarinet', 'Trombone', 'Tuba', 'Harp', 'Banjo', 'Bass', 'Harmonica', 'Organ', 'Xylophone', 'Tambourine', 'Maracas', 'Cymbals', 'Bongos', 'French Horn'],
+          rare: ['Viola', 'Double Bass', 'Bassoon', 'Piccolo', 'Mandolin', 'Sitar', 'Lute', 'Harpsichord', 'Marimba', 'Vibraphone', 'Timpani', 'Glockenspiel', 'Recorder', 'Congas', 'Djembe', 'Steel Drum'],
+          deepCut: ['Didgeridoo', 'Kalimba', 'Ocarina', 'Balalaika', 'Bouzouki', 'Erhu', 'Koto', 'Shamisen', 'Guzheng', 'Tabla', 'Cajon', 'Melodica', 'Concertina', 'Cornet', 'Euphonium', 'Sousaphone', 'Flugelhorn', 'Lyre'],
+          krillion: ['Hurdy-Gurdy', 'Glass Armonica', 'Ondes Martenot', 'Hang Drum', 'Handpan', 'Nyckelharpa', 'Cimbalom', 'Bandoneon', 'Chapman Stick', 'Vuvuzela', 'Berimbau', 'Kora', 'Mbira', 'Sackbut', 'Shawm', 'Serpent', 'Baryton', 'Zither', 'Dulcimer', 'Pipa']
+        }, { drum: 'Drums', sax: 'Saxophone', electricguitar: 'Guitar', acousticguitar: 'Guitar', bassguitar: 'Bass', uke: 'Ukulele', bagpipe: 'Bagpipes', hurdygurdy: 'Hurdy-Gurdy' }),
+
+        makePrompt('media', 'Name a music genre', {
+          plankton: ['Pop', 'Rock', 'Hip Hop', 'Rap', 'Jazz', 'Country', 'Classical'],
+          tooClever: ['Hyperpop', 'Lo-Fi', 'Vaporwave', 'K-Pop', 'Dubstep', 'Ska', 'Bossa Nova'],
+          schooler: ['R&B', 'Blues', 'Metal', 'Heavy Metal', 'Punk', 'Reggae', 'Soul', 'Funk', 'Disco', 'Folk', 'Electronic', 'EDM', 'House', 'Techno', 'Indie', 'Alternative', 'Gospel', 'Opera'],
+          rare: ['Grunge', 'Emo', 'Trance', 'Drum and Bass', 'Trap', 'Ambient', 'Synthwave', 'Shoegaze', 'Swing', 'Bluegrass', 'Salsa', 'Flamenco', 'Afrobeat', 'J-Pop', 'Reggaeton', 'Dancehall', 'New Wave'],
+          deepCut: ['Math Rock', 'Post-Rock', 'Post-Punk', 'Dream Pop', 'City Pop', 'Trip Hop', 'Breakbeat', 'Jungle', 'UK Garage', 'Grime', 'Drill', 'Phonk', 'Chiptune', 'Psytrance', 'Doom Metal', 'Black Metal', 'Death Metal', 'Prog Rock', 'Krautrock', 'Zydeco'],
+          krillion: ['Djent', 'Witch House', 'Glitch Hop', 'IDM', 'Moombahton', 'Cumbia', 'Fado', 'Gamelan', 'Qawwali', 'Highlife', 'Soukous', 'Klezmer', 'Zydeco', 'Zeuhl', 'No Wave', 'Lowercase', 'Electroswing', 'Folktronica', 'Dungeon Synth', 'Nintendocore']
+        }, { hiphop: 'Hip Hop', rnb: 'R&B', lofi: 'Lo-Fi', kpop: 'K-Pop', jpop: 'J-Pop', dnb: 'Drum and Bass', drumnbass: 'Drum and Bass', rockandroll: 'Rock', heavymetal: 'Heavy Metal' }),
+
+        makePrompt('media', 'Name a Pixar or Disney animated movie', {
+          plankton: ['Toy Story', 'Frozen', 'The Lion King', 'Finding Nemo', 'Aladdin', 'Cinderella', 'Shrek'],
+          tooClever: ['Ratatouille', 'Wall-E', 'Treasure Planet', 'Atlantis', 'Emperors New Groove', 'Mulan'],
+          schooler: ['Cars', 'Monsters Inc', 'The Incredibles', 'Up', 'Inside Out', 'Coco', 'Moana', 'Tangled', 'Beauty and the Beast', 'The Little Mermaid', 'Snow White', 'Bambi', 'Dumbo', 'Pinocchio', 'Peter Pan', 'Zootopia', 'Encanto', 'Brave'],
+          rare: ['A Bugs Life', 'Finding Dory', 'Soul', 'Luca', 'Turning Red', 'Elemental', 'Onward', 'Big Hero 6', 'Wreck-It Ralph', 'Lilo and Stitch', 'Hercules', 'Tarzan', 'Pocahontas', 'Sleeping Beauty', 'Robin Hood', 'The Jungle Book', '101 Dalmatians', 'Aristocats'],
+          deepCut: ['The Good Dinosaur', 'Fantasia', 'The Hunchback of Notre Dame', 'Brother Bear', 'Meet the Robinsons', 'Bolt', 'Chicken Little', 'Dinosaur', 'The Fox and the Hound', 'The Rescuers', 'The Sword in the Stone', 'Oliver and Company', 'The Great Mouse Detective', 'The Princess and the Frog', 'Raya and the Last Dragon'],
+          krillion: ['The Black Cauldron', 'Home on the Range', 'Saludos Amigos', 'The Three Caballeros', 'Make Mine Music', 'Fun and Fancy Free', 'Melody Time', 'Ichabod and Mr Toad', 'Strange World', 'Wish', 'A Goofy Movie', 'The Rescuers Down Under', 'Fantasia 2000']
+        }, { lionking: 'The Lion King', nemo: 'Finding Nemo', walle: 'Wall-E', incredibles: 'The Incredibles', monstersinc: 'Monsters Inc', bugslife: 'A Bugs Life', littlemermaid: 'The Little Mermaid', junglebook: 'The Jungle Book', wreckitralph: 'Wreck-It Ralph', liloandstitch: 'Lilo and Stitch', emperorsnewgroove: 'Emperors New Groove', hunchback: 'The Hunchback of Notre Dame', blackcauldron: 'The Black Cauldron', atlantis: 'Atlantis' }),
+
+        makePrompt('media', 'Name a superhero', {
+          plankton: ['Spider-Man', 'Batman', 'Superman', 'Iron Man', 'Wonder Woman', 'Captain America', 'Hulk'],
+          tooClever: ['Deadpool', 'Squirrel Girl', 'Aquaman', 'Invincible', 'Homelander', 'One Punch Man'],
+          schooler: ['Thor', 'Black Widow', 'Flash', 'Green Lantern', 'Wolverine', 'Doctor Strange', 'Black Panther', 'Ant-Man', 'Hawkeye', 'Scarlet Witch', 'Captain Marvel', 'Robin', 'Batgirl', 'Supergirl', 'Daredevil'],
+          rare: ['Cyclops', 'Storm', 'Nightcrawler', 'Gambit', 'Rogue', 'Jean Grey', 'Beast', 'Green Arrow', 'Cyborg', 'Starfire', 'Raven', 'Beast Boy', 'Shazam', 'Vision', 'Falcon', 'Punisher', 'Luke Cage', 'Jessica Jones', 'Ghost Rider', 'Silver Surfer', 'Moon Knight'],
+          deepCut: ['Martian Manhunter', 'Zatanna', 'Constantine', 'Blue Beetle', 'Booster Gold', 'Plastic Man', 'Nightwing', 'Red Hood', 'Static Shock', 'Spawn', 'Hellboy', 'Ms Marvel', 'She-Hulk', 'Nova', 'Adam Warlock', 'Sentry', 'Blade', 'Iron Fist', 'Shang-Chi', 'Rorschach'],
+          krillion: ['Matter-Eater Lad', 'Arm-Fall-Off-Boy', 'Animal Man', 'Swamp Thing', 'The Question', 'Wildcat', 'Hourman', 'Doctor Fate', 'Etrigan', 'Beta Ray Bill', 'Dazzler', 'Jubilee', 'Howard the Duck', 'Darkhawk', 'Cloak', 'Dagger', 'Big Barda', 'Mister Miracle', 'Bouncing Boy', 'Ambush Bug']
+        }, { spiderman: 'Spider-Man', ironman: 'Iron Man', antman: 'Ant-Man', theflash: 'Flash', drstrange: 'Doctor Strange', saitama: 'One Punch Man', cap: 'Captain America' }),
+
+        makePrompt('media', 'Name a famous band or solo music artist', {
+          plankton: ['Taylor Swift', 'The Beatles', 'Michael Jackson', 'Beyonce', 'Drake', 'Elvis Presley', 'Queen'],
+          tooClever: ['BTS', 'Radiohead', 'Daft Punk', 'Nirvana', 'Tame Impala', 'Gorillaz', 'Rick Astley'],
+          schooler: ['Eminem', 'Rihanna', 'Adele', 'Ed Sheeran', 'Bruno Mars', 'Lady Gaga', 'Ariana Grande', 'Justin Bieber', 'The Weeknd', 'Billie Eilish', 'Kanye West', 'Kendrick Lamar', 'Coldplay', 'Pink Floyd', 'Led Zeppelin', 'Rolling Stones', 'Metallica', 'AC/DC', 'ABBA', 'Madonna'],
+          rare: ['David Bowie', 'Prince', 'Elton John', 'Bob Marley', 'Bob Dylan', 'Frank Sinatra', 'Stevie Wonder', 'Fleetwood Mac', 'Red Hot Chili Peppers', 'Linkin Park', 'Green Day', 'Arctic Monkeys', 'Foo Fighters', 'Oasis', 'U2', 'SZA', 'Frank Ocean', 'Tyler the Creator', 'Lana Del Rey', 'Olivia Rodrigo'],
+          deepCut: ['Bjork', 'Kate Bush', 'Talking Heads', 'The Smiths', 'The Cure', 'Depeche Mode', 'Joy Division', 'New Order', 'Massive Attack', 'Portishead', 'Aphex Twin', 'MF DOOM', 'Outkast', 'A Tribe Called Quest', 'Nina Simone', 'Miles Davis', 'John Coltrane', 'Kraftwerk', 'Boards of Canada', 'Nujabes'],
+          krillion: ['Cocteau Twins', 'My Bloody Valentine', 'Fishmans', 'Can', 'Neu!', 'King Crimson', 'Fela Kuti', 'Mulatu Astatke', 'Khruangbin', 'Sigur Ros', 'Godspeed You Black Emperor', 'Sufjan Stevens', 'Elliott Smith', 'Nick Drake', 'J Dilla', 'Burial', 'Four Tet', 'Floating Points', 'Ryuichi Sakamoto', 'Haruomi Hosono']
+        }, { beatles: 'The Beatles', elvis: 'Elvis Presley', ye: 'Kanye West', acdc: 'AC/DC', weeknd: 'The Weeknd', rhcp: 'Red Hot Chili Peppers', mfdoom: 'MF DOOM', bowie: 'David Bowie' }),
+
+        makePrompt('media', 'Name a classic board or tabletop game', {
+          plankton: ['Monopoly', 'Chess', 'Checkers', 'Scrabble', 'Uno', 'Clue', 'Risk'],
+          tooClever: ['Catan', 'Go', 'Mahjong', 'Mancala', 'Dungeons and Dragons', 'Battleship'],
+          schooler: ['Sorry', 'Life', 'Candy Land', 'Chutes and Ladders', 'Snakes and Ladders', 'Yahtzee', 'Connect Four', 'Jenga', 'Twister', 'Operation', 'Pictionary', 'Trivial Pursuit', 'Backgammon', 'Dominoes', 'Othello', 'Guess Who'],
+          rare: ['Ticket to Ride', 'Carcassonne', 'Pandemic', 'Codenames', 'Boggle', 'Scattergories', 'Taboo', 'Apples to Apples', 'Cards Against Humanity', 'Bananagrams', 'Rummikub', 'Mastermind', 'Stratego', 'Payday', 'Mousetrap', 'Trouble', 'Parcheesi'],
+          deepCut: ['Azul', 'Wingspan', 'Splendor', '7 Wonders', 'Dominion', 'Terraforming Mars', 'Gloomhaven', 'Root', 'Dixit', 'Mysterium', 'Betrayal at House on the Hill', 'Coup', 'Avalon', 'Shogi', 'Xiangqi', 'Cribbage', 'Ludo', 'Pachisi'],
+          krillion: ['Senet', 'Royal Game of Ur', 'Hnefatafl', 'Nine Mens Morris', 'Go-Moku', 'Renju', 'Tak', 'Hive', 'Santorini', 'Twilight Imperium', 'Agricola', 'Brass Birmingham', 'Scythe', 'Spirit Island', 'Tigris and Euphrates', 'Crokinole', 'Carrom', 'Tsuro', 'Patchwork']
+        }, { cluedo: 'Clue', settlersofcatan: 'Catan', dnd: 'Dungeons and Dragons', gameoflife: 'Life', connect4: 'Connect Four', draughs: 'Checkers', draughts: 'Checkers', weiqi: 'Go', baduk: 'Go' }),
+
+        makePrompt('media', 'Name a famous novel or Shakespeare play', {
+          plankton: ['Romeo and Juliet', 'Hamlet', 'Harry Potter', 'The Great Gatsby', '1984', 'To Kill a Mockingbird', 'Macbeth'],
+          tooClever: ['The Catcher in the Rye', 'Animal Farm', 'Moby Dick', 'Frankenstein', 'Pride and Prejudice', 'Dune'],
+          schooler: ['The Odyssey', 'The Iliad', 'Othello', 'King Lear', 'A Midsummer Nights Dream', 'The Tempest', 'Julius Caesar', 'Lord of the Rings', 'The Hobbit', 'Brave New World', 'Fahrenheit 451', 'Jane Eyre', 'Wuthering Heights', 'Dracula', 'Don Quixote', 'The Alchemist', 'Little Women'],
+          rare: ['Crime and Punishment', 'War and Peace', 'Anna Karenina', 'Les Miserables', 'The Count of Monte Cristo', 'Great Expectations', 'Oliver Twist', 'A Tale of Two Cities', 'The Picture of Dorian Gray', 'Twelfth Night', 'Much Ado About Nothing', 'The Merchant of Venice', 'Catch-22', 'Slaughterhouse-Five', 'Lord of the Flies', 'The Grapes of Wrath'],
+          deepCut: ['The Brothers Karamazov', 'One Hundred Years of Solitude', 'Ulysses', 'Lolita', 'The Metamorphosis', 'The Trial', 'The Stranger', 'Beloved', 'Invisible Man', 'Their Eyes Were Watching God', 'Rebecca', 'Middlemarch', 'Heart of Darkness', 'The Master and Margarita', 'Coriolanus', 'Titus Andronicus', 'Richard III'],
+          krillion: ['Cymbeline', 'Pericles', 'Timon of Athens', 'Troilus and Cressida', 'The Winters Tale', 'Measure for Measure', 'Infinite Jest', 'Gravitys Rainbow', 'Finnegans Wake', 'In Search of Lost Time', 'The Name of the Rose', 'If on a Winters Night a Traveler', 'Pale Fire', 'Ficciones', 'The Tale of Genji', 'Dream of the Red Chamber', 'Gargantua and Pantagruel']
+        }, { gatsby: 'The Great Gatsby', lotr: 'Lord of the Rings', midsummernightsdream: 'A Midsummer Nights Dream', nineteeneightyfour: '1984', catch22: 'Catch-22', slaughterhousefive: 'Slaughterhouse-Five' }),
+
+        /* -------------------- GAMING & POP CULTURE (7) -------------------- */
+        makePrompt('gaming', 'Name a video game released before 2010', {
+          plankton: ['Minecraft', 'Tetris', 'Pac-Man', 'Super Mario Bros', 'Pong', 'Grand Theft Auto', 'Pokemon'],
+          tooClever: ['Portal', 'Halo', 'Doom', 'World of Warcraft', 'Half-Life', 'Ocarina of Time', 'Runescape'],
+          schooler: ['Sonic the Hedgehog', 'Donkey Kong', 'Space Invaders', 'Street Fighter', 'Mortal Kombat', 'Final Fantasy VII', 'Mario Kart', 'Super Smash Bros', 'The Sims', 'Call of Duty', 'Counter-Strike', 'StarCraft', 'Diablo', 'Team Fortress 2', 'BioShock', 'Fallout 3', 'Left 4 Dead', 'Wii Sports', 'Guitar Hero'],
+          rare: ['Chrono Trigger', 'Metal Gear Solid', 'Resident Evil', 'Silent Hill', 'Castlevania', 'Metroid', 'Mega Man', 'Kirby', 'EarthBound', 'Banjo-Kazooie', 'GoldenEye 007', 'Crash Bandicoot', 'Spyro', 'Kingdom Hearts', 'Shadow of the Colossus', 'Mass Effect', 'Oblivion', 'Morrowind', 'Age of Empires', 'RollerCoaster Tycoon'],
+          deepCut: ['Deus Ex', 'System Shock', 'Baldur Gate', 'Planescape Torment', 'Grim Fandango', 'Monkey Island', 'Myst', 'Katamari Damacy', 'Okami', 'Psychonauts', 'Beyond Good and Evil', 'Ico', 'Shenmue', 'Jet Set Radio', 'Max Payne', 'Thief', 'Cave Story', 'Braid', 'Spelunky', 'Dwarf Fortress'],
+          krillion: ['Zork', 'Colossal Cave Adventure', 'NetHack', 'Rogue', 'Elite', 'Star Control II', 'Pathologic', 'Mother 3', 'Panzer Dragoon Saga', 'Vagrant Story', 'Suikoden II', 'Xenogears', 'Radiant Silvergun', 'Ikaruga', 'Seaman', 'Vib-Ribbon', 'LSD Dream Emulator', 'Kenshi', 'E.T.', 'Polybius']
+        }, { mario: 'Super Mario Bros', pacman: 'Pac-Man', gta: 'Grand Theft Auto', wow: 'World of Warcraft', halflife: 'Half-Life', tf2: 'Team Fortress 2', cs: 'Counter-Strike', ff7: 'Final Fantasy VII', smashbros: 'Super Smash Bros', goldeneye: 'GoldenEye 007', aoe: 'Age of Empires', rct: 'RollerCoaster Tycoon', baldursgate: 'Baldur Gate', l4d: 'Left 4 Dead' }),
+
+        makePrompt('gaming', 'Name a Pokémon', {
+          plankton: ['Pikachu', 'Charizard', 'Bulbasaur', 'Squirtle', 'Charmander', 'Eevee', 'Mewtwo'],
+          tooClever: ['Ditto', 'Magikarp', 'Bidoof', 'Snorlax', 'Gengar', 'Mudkip', 'Mimikyu'],
+          schooler: ['Jigglypuff', 'Meowth', 'Psyduck', 'Lucario', 'Greninja', 'Rayquaza', 'Gyarados', 'Dragonite', 'Mew', 'Gardevoir', 'Umbreon', 'Sylveon', 'Vaporeon', 'Blastoise', 'Venusaur', 'Raichu', 'Piplup', 'Torchic', 'Rowlet'],
+          rare: ['Alakazam', 'Machamp', 'Arcanine', 'Lapras', 'Scyther', 'Tyranitar', 'Metagross', 'Garchomp', 'Salamence', 'Blaziken', 'Sceptile', 'Infernape', 'Cyndaquil', 'Totodile', 'Chikorita', 'Lugia', 'Ho-Oh', 'Kyogre', 'Groudon', 'Arceus', 'Zoroark', 'Togepi', 'Onix'],
+          deepCut: ['Shuckle', 'Dunsparce', 'Wobbuffet', 'Shedinja', 'Absol', 'Flygon', 'Milotic', 'Ampharos', 'Heracross', 'Scizor', 'Weavile', 'Volcarona', 'Chandelure', 'Aegislash', 'Dragapult', 'Tinkaton', 'Clodsire', 'Wooper', 'Slowpoke', 'Porygon', 'Aerodactyl', 'Kabutops'],
+          krillion: ['Lumineon', 'Finneon', 'Maractus', 'Qwilfish', 'Stantler', 'Huntail', 'Gorebyss', 'Chimecho', 'Relicanth', 'Carnivine', 'Mothim', 'Wormadam', 'Elgyem', 'Beheeyem', 'Heatmor', 'Basculin', 'Bruxish', 'Dhelmise', 'Komala', 'Eiscue', 'Stonjourner', 'Pincurchin', 'Pyukumuku', 'Sizzlipede', 'Orthworm', 'Spidops', 'Sunkern']
+        }, { hooh: 'Ho-Oh' }),
+
+        makePrompt('gaming', 'Name a Nintendo character', {
+          plankton: ['Mario', 'Luigi', 'Link', 'Zelda', 'Pikachu', 'Bowser', 'Kirby', 'Peach'],
+          tooClever: ['Waluigi', 'Wario', 'Toad', 'Yoshi', 'Samus', 'Captain Falcon', 'Geno'],
+          schooler: ['Donkey Kong', 'Diddy Kong', 'Ganondorf', 'Fox McCloud', 'Falco', 'Isabelle', 'Tom Nook', 'Ness', 'Marth', 'Meta Knight', 'King Dedede', 'Daisy', 'Rosalina', 'Koopa Troopa', 'Goomba', 'Inkling'],
+          rare: ['Shulk', 'Pit', 'Palutena', 'Olimar', 'Pikmin', 'Little Mac', 'Mr Game and Watch', 'Ice Climbers', 'Sheik', 'Midna', 'K.K. Slider', 'King K Rool', 'Ridley', 'Ike', 'Roy', 'Lucina', 'Byleth', 'Shy Guy', 'Boo', 'Bowser Jr', 'Kamek'],
+          deepCut: ['Tingle', 'Skull Kid', 'Majora', 'Wolf ODonnell', 'Slippy Toad', 'Peppy Hare', 'Lucas', 'Porky', 'Birdo', 'Pauline', 'Cranky Kong', 'Funky Kong', 'Bandana Waddle Dee', 'Blathers', 'Resetti', 'Redd', 'Zero Suit Samus', 'Dark Pit', 'Pyra', 'Mythra'],
+          krillion: ['Chibi-Robo', 'Doshin the Giant', 'Starfy', 'Excitebiker', 'Balloon Fighter', 'Mach Rider', 'Takamaru', 'Lip', 'Captain Rainbow', 'Saki Amamiya', 'Isaac', 'Andy', 'Sami', 'Ninten', 'Mallow', 'Wart', 'Tatanga', 'Fawful', 'Ghirahim', 'Zant', 'Groose', 'Dillon']
+        }, { princesspeach: 'Peach', dk: 'Donkey Kong', fox: 'Fox McCloud', gameandwatch: 'Mr Game and Watch', krool: 'King K Rool', kkslider: 'K.K. Slider', samusaran: 'Samus' }),
+
+        makePrompt('gaming', 'Name a programming language', {
+          plankton: ['Python', 'JavaScript', 'Java', 'C', 'C++', 'HTML', 'C#'],
+          tooClever: ['Rust', 'Brainfuck', 'Assembly', 'COBOL', 'Scratch', 'TypeScript', 'Go'],
+          schooler: ['Ruby', 'PHP', 'Swift', 'Kotlin', 'SQL', 'R', 'MATLAB', 'Perl', 'Scala', 'Dart', 'Lua', 'Bash', 'Shell', 'Objective-C', 'Visual Basic'],
+          rare: ['Haskell', 'Elixir', 'Clojure', 'Erlang', 'Fortran', 'Pascal', 'Lisp', 'Scheme', 'F#', 'Groovy', 'Julia', 'Zig', 'Solidity', 'VHDL', 'Verilog', 'Prolog'],
+          deepCut: ['OCaml', 'Ada', 'Smalltalk', 'Racket', 'Crystal', 'Nim', 'D', 'Elm', 'PureScript', 'CoffeeScript', 'ActionScript', 'ColdFusion', 'ABAP', 'Apex', 'Awk', 'Tcl', 'Forth', 'Delphi', 'Basic'],
+          krillion: ['Malbolge', 'Whitespace', 'Befunge', 'INTERCAL', 'LOLCODE', 'Piet', 'Rockstar', 'APL', 'J', 'K', 'Q', 'Idris', 'Agda', 'Coq', 'Lean', 'Eiffel', 'Modula-2', 'Oberon', 'Simula', 'SNOBOL', 'Rexx', 'MUMPS', 'Factor', 'Gleam', 'Odin', 'Mojo']
+        }, { js: 'JavaScript', ts: 'TypeScript', cpp: 'C++', csharp: 'C#', golang: 'Go', py: 'Python', asm: 'Assembly', vb: 'Visual Basic', fsharp: 'F#' }),
+
+        makePrompt('gaming', 'Name a social media platform or tech company', {
+          plankton: ['Google', 'Apple', 'Microsoft', 'Facebook', 'Instagram', 'TikTok', 'YouTube', 'Amazon'],
+          tooClever: ['Reddit', 'Discord', 'MySpace', 'Tumblr', 'Bluesky', 'Mastodon', 'Nvidia'],
+          schooler: ['Twitter', 'X', 'Snapchat', 'LinkedIn', 'Pinterest', 'WhatsApp', 'Telegram', 'Twitch', 'Netflix', 'Spotify', 'Meta', 'Tesla', 'Samsung', 'Sony', 'Intel', 'AMD', 'Uber', 'Airbnb'],
+          rare: ['WeChat', 'Line', 'KakaoTalk', 'Viber', 'Signal', 'Threads', 'BeReal', 'Quora', 'Medium', 'Substack', 'Patreon', 'GitHub', 'IBM', 'Oracle', 'Cisco', 'Adobe', 'Salesforce', 'Shopify', 'Stripe', 'Zoom', 'Slack', 'Dropbox', 'OpenAI'],
+          deepCut: ['Vine', 'Clubhouse', 'Yik Yak', 'Friendster', 'Orkut', 'LiveJournal', 'DeviantArt', 'Flickr', 'Vimeo', 'Dailymotion', 'SoundCloud', 'Bandcamp', 'Goodreads', 'Letterboxd', 'Strava', 'Nextdoor', 'Cloudflare', 'Palantir', 'Datadog', 'Figma', 'Notion', 'Vercel'],
+          krillion: ['ICQ', 'AOL', 'AIM', 'Xanga', 'Bebo', 'Hi5', 'Foursquare', 'Swarm', 'Ello', 'Vero', 'Peach', 'Lemmy', 'Pixelfed', 'Misskey', 'VK', 'Odnoklassniki', 'Bilibili', 'Douban', 'Xiaohongshu', 'Zalo', 'Niconico', 'Newgrounds', 'Neopets', 'Habbo']
+        }, { yt: 'YouTube', ig: 'Instagram', fb: 'Facebook', rednote: 'Xiaohongshu' }),
+
+        makePrompt('gaming', 'Name a famous fictional wizard, witch, or magic user', {
+          plankton: ['Harry Potter', 'Gandalf', 'Dumbledore', 'Hermione Granger', 'Voldemort', 'Merlin'],
+          tooClever: ['Doctor Strange', 'Scarlet Witch', 'Saruman', 'Draco Malfoy', 'Yennefer', 'Frieren'],
+          schooler: ['Ron Weasley', 'Severus Snape', 'Hagrid', 'Sirius Black', 'Sabrina', 'Maleficent', 'Ursula', 'Elsa', 'Wicked Witch of the West', 'Glinda', 'Oz', 'Aang', 'Raven', 'Zatanna', 'Howl', 'Kiki'],
+          rare: ['Bellatrix Lestrange', 'Minerva McGonagall', 'Luna Lovegood', 'Newt Scamander', 'Grindelwald', 'Radagast', 'Elphaba', 'Circe', 'Morgana', 'Medea', 'Jafar', 'Genie', 'Mary Poppins', 'Tim the Enchanter', 'Willow Rosenberg', 'Constantine', 'Satoru Gojo', 'Megumin'],
+          deepCut: ['Ged', 'Sparrowhawk', 'Harry Dresden', 'Kvothe', 'Rand al-Thor', 'Moiraine', 'Raistlin Majere', 'Elminster', 'Mordenkainen', 'Rincewind', 'Granny Weatherwax', 'Tiffany Aching', 'Bayaz', 'Quick Ben', 'Triss Merigold', 'Vilgefortz', 'Tissaia', 'Natsu', 'Lina Inverse', 'Schierke'],
+          krillion: ['Pug', 'Belgarath', 'Polgara', 'Allanon', 'Zeddicus Zul Zorander', 'Kelsier', 'Vin', 'Jasnah Kholin', 'Hoid', 'Prospero', 'Baba Yaga', 'Vainamoinen', 'Gwydion', 'Taliesin', 'Vivi Ornitier', 'Black Mage', 'Kamek', 'Shang Tsung', 'Kaelthas', 'Jaina Proudmoore', 'Medivh', 'Khadgar', 'Vecna']
+        }, { hermione: 'Hermione Granger', snape: 'Severus Snape', drstrange: 'Doctor Strange', wandamaximoff: 'Scarlet Witch', wanda: 'Scarlet Witch', gojo: 'Satoru Gojo', wizardofoz: 'Oz', mcgonagall: 'Minerva McGonagall', dresden: 'Harry Dresden' }),
+
+        makePrompt('gaming', 'Name a sport played in the Olympics', {
+          plankton: ['Swimming', 'Basketball', 'Soccer', 'Gymnastics', 'Track and Field', 'Tennis', 'Running'],
+          tooClever: ['Curling', 'Breakdancing', 'Fencing', 'Archery', 'Bobsled', 'Skeleton', 'Skateboarding'],
+          schooler: ['Volleyball', 'Baseball', 'Softball', 'Golf', 'Boxing', 'Wrestling', 'Cycling', 'Rowing', 'Diving', 'Ice Hockey', 'Figure Skating', 'Skiing', 'Snowboarding', 'Badminton', 'Table Tennis', 'Weightlifting', 'Judo', 'Taekwondo', 'Rugby', 'Water Polo'],
+          rare: ['Handball', 'Field Hockey', 'Sailing', 'Canoeing', 'Kayaking', 'Triathlon', 'Equestrian', 'Shooting', 'Surfing', 'Sport Climbing', 'Karate', 'Luge', 'Biathlon', 'Speed Skating', 'Ski Jumping', 'Artistic Swimming', 'Trampoline', 'BMX'],
+          deepCut: ['Modern Pentathlon', 'Decathlon', 'Heptathlon', 'Race Walking', 'Steeplechase', 'Hammer Throw', 'Javelin', 'Discus', 'Shot Put', 'Pole Vault', 'High Jump', 'Long Jump', 'Triple Jump', 'Nordic Combined', 'Freestyle Skiing', 'Cross-Country Skiing', 'Rhythmic Gymnastics', '3x3 Basketball', 'Beach Volleyball'],
+          krillion: ['Tug of War', 'Croquet', 'Roque', 'Basque Pelota', 'Jeu de Paume', 'Lacrosse', 'Cricket', 'Flag Football', 'Squash', 'Polo', 'Solo Synchronized Swimming', 'Pistol Dueling', 'Live Pigeon Shooting', 'Military Patrol', 'Korfball', 'Motorboating']
+        }, { football: 'Soccer', pingpong: 'Table Tennis', breaking: 'Breakdancing', climbing: 'Sport Climbing', synchronizedswimming: 'Artistic Swimming', bobsleigh: 'Bobsled', athletics: 'Track and Field', marathon: 'Running' }),
+
+        /* -------------------- WORD & LETTERS (7) -------------------- */
+        makePrompt('words', 'Name a fruit that starts with the letter B', {
+          plankton: ['Banana', 'Blueberry', 'Blackberry'],
+          tooClever: ['Blood Orange', 'Boysenberry', 'Breadfruit', 'Bitter Melon'],
+          schooler: ['Bilberry', 'Blackcurrant', 'Bing Cherry', 'Bartlett Pear', 'Bosc Pear', 'Butternut Squash'],
+          rare: ['Bergamot', 'Buddhas Hand', 'Barberry', 'Black Sapote', 'Bael', 'Bearberry', 'Buffaloberry'],
+          deepCut: ['Babaco', 'Bacuri', 'Bignay', 'Bimbli', 'Biriba', 'Black Mulberry', 'Black Raspberry', 'Brazilian Cherry', 'Burmese Grape'],
+          krillion: ['Bambangan', 'Baccaurea', 'Borojo', 'Buni', 'Button Mangosteen', 'Bush Butter', 'Balsam Apple', 'Bunchberry', 'Batuan', 'Blue Java Banana']
+        }, { bananas: 'Banana', blueberries: 'Blueberry', blackberries: 'Blackberry', blackcurrants: 'Blackcurrant' }),
+
+        makePrompt('words', 'Name a country that starts with the letter S', {
+          plankton: ['Spain', 'Sweden', 'Switzerland', 'South Korea', 'South Africa', 'Scotland'],
+          tooClever: ['Singapore', 'Sri Lanka', 'San Marino', 'Serbia', 'Syria', 'Slovakia'],
+          schooler: ['Saudi Arabia', 'Senegal', 'Somalia', 'Sudan', 'Slovenia', 'Samoa', 'Seychelles'],
+          rare: ['Sierra Leone', 'Suriname', 'South Sudan', 'Solomon Islands', 'Saint Lucia', 'Swaziland'],
+          deepCut: ['Saint Kitts and Nevis', 'Saint Vincent and the Grenadines', 'Sao Tome and Principe'],
+          krillion: ['Somaliland', 'Sahrawi Arab Democratic Republic', 'Sint Maarten']
+        }, { stlucia: 'Saint Lucia', stkitts: 'Saint Kitts and Nevis', stvincent: 'Saint Vincent and the Grenadines' }),
+
+        makePrompt('words', 'Name an animal that starts with the letter C', {
+          plankton: ['Cat', 'Cow', 'Chicken', 'Crocodile', 'Camel', 'Cheetah', 'Crab'],
+          tooClever: ['Capybara', 'Chameleon', 'Chinchilla', 'Cockroach', 'Caterpillar', 'Chimpanzee'],
+          schooler: ['Crow', 'Cougar', 'Coyote', 'Cobra', 'Clownfish', 'Clam', 'Crane', 'Canary', 'Cardinal', 'Centipede', 'Cicada', 'Cricket', 'Corgi', 'Calf', 'Cod'],
+          rare: ['Caribou', 'Cassowary', 'Caiman', 'Caracal', 'Civet', 'Cockatoo', 'Condor', 'Cormorant', 'Cuttlefish', 'Chipmunk', 'Cuckoo', 'Curlew', 'Chihuahua', 'Chamois'],
+          deepCut: ['Coelacanth', 'Coati', 'Coatimundi', 'Colobus', 'Cockatiel', 'Copperhead', 'Cottonmouth', 'Coral', 'Crayfish', 'Crawfish', 'Cuscus', 'Capybara', 'Chuckwalla', 'Cotinga'],
+          krillion: ['Caecilian', 'Cacomistle', 'Capuchin', 'Capybara', 'Cassowary', 'Catamount', 'Chiru', 'Chough', 'Cichlid', 'Colugo', 'Cony', 'Corsac Fox', 'Coucal', 'Coypu', 'Crake', 'Ctenophore', 'Cusk', 'Crowned Crane', 'Candiru', 'Cusk Eel']
+        }, { chimp: 'Chimpanzee', croc: 'Crocodile' }),
+
+        makePrompt('words', 'Name a color or shade', {
+          plankton: ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'Black', 'White'],
+          tooClever: ['Chartreuse', 'Cyan', 'Magenta', 'Turquoise', 'Indigo', 'Teal', 'Beige'],
+          schooler: ['Brown', 'Gray', 'Gold', 'Silver', 'Violet', 'Maroon', 'Navy', 'Crimson', 'Scarlet', 'Lime', 'Olive', 'Peach', 'Coral', 'Lavender', 'Mint', 'Tan', 'Cream', 'Ivory'],
+          rare: ['Burgundy', 'Aquamarine', 'Periwinkle', 'Mauve', 'Ochre', 'Sienna', 'Umber', 'Amber', 'Emerald', 'Sapphire', 'Ruby', 'Cobalt', 'Cerulean', 'Fuchsia', 'Plum', 'Lilac', 'Mustard', 'Rust', 'Khaki', 'Taupe', 'Salmon', 'Rose'],
+          deepCut: ['Vermilion', 'Puce', 'Ecru', 'Viridian', 'Cinnabar', 'Carmine', 'Alizarin', 'Celadon', 'Heliotrope', 'Wisteria', 'Apricot', 'Persimmon', 'Aureolin', 'Saffron', 'Malachite', 'Bistre', 'Sepia', 'Flax', 'Auburn', 'Mahogany', 'Ebony', 'Alabaster'],
+          krillion: ['Smaragdine', 'Sarcoline', 'Coquelicot', 'Glaucous', 'Fulvous', 'Xanadu', 'Falu', 'Mikado', 'Caput Mortuum', 'Vantablack', 'Eigengrau', 'Gamboge', 'Wenge', 'Zaffre', 'Amaranth', 'Byzantium', 'Fandango', 'Incarnadine', 'Isabelline', 'Nattier', 'Orpiment', 'Phlox', 'Sinoper', 'Skobeloff', 'Titian', 'Verdigris']
+        }, { grey: 'Gray', aquagreen: 'Aquamarine', hotpink: 'Fuchsia', darkblue: 'Navy' }),
+
+        makePrompt('words', 'Name a job or profession', {
+          plankton: ['Doctor', 'Teacher', 'Lawyer', 'Engineer', 'Nurse', 'Chef', 'Police Officer'],
+          tooClever: ['Astronaut', 'Influencer', 'Youtuber', 'Sommelier', 'Actuary', 'Bartender', 'Pilot'],
+          schooler: ['Firefighter', 'Dentist', 'Accountant', 'Architect', 'Scientist', 'Artist', 'Musician', 'Actor', 'Writer', 'Journalist', 'Photographer', 'Plumber', 'Electrician', 'Carpenter', 'Mechanic', 'Farmer', 'Waiter', 'Cashier', 'Barista', 'Designer', 'Programmer', 'Veterinarian', 'Pharmacist'],
+          rare: ['Librarian', 'Surgeon', 'Psychologist', 'Therapist', 'Economist', 'Historian', 'Archaeologist', 'Geologist', 'Biologist', 'Chemist', 'Physicist', 'Astronomer', 'Meteorologist', 'Translator', 'Interpreter', 'Judge', 'Paralegal', 'Broker', 'Realtor', 'Butcher', 'Baker', 'Tailor', 'Florist', 'Barber', 'Welder', 'Machinist'],
+          deepCut: ['Cartographer', 'Archivist', 'Curator', 'Mortician', 'Embalmer', 'Coroner', 'Podiatrist', 'Optometrist', 'Anesthesiologist', 'Radiologist', 'Chiropractor', 'Audiologist', 'Dietitian', 'Locksmith', 'Blacksmith', 'Jeweler', 'Watchmaker', 'Cobbler', 'Upholsterer', 'Glazier', 'Surveyor', 'Auctioneer', 'Stenographer', 'Notary'],
+          krillion: ['Horologist', 'Fletcher', 'Cooper', 'Farrier', 'Chandler', 'Tanner', 'Milliner', 'Haberdasher', 'Luthier', 'Taxidermist', 'Vexillologist', 'Lexicographer', 'Paleontologist', 'Entomologist', 'Ichthyologist', 'Mycologist', 'Oenologist', 'Apiculturist', 'Arborist', 'Stevedore', 'Saddler', 'Scrivener', 'Pellter', 'Gaffer', 'Foley Artist']
+        }, { cop: 'Police Officer', police: 'Police Officer', vet: 'Veterinarian', coder: 'Programmer', developer: 'Programmer', softwareengineer: 'Engineer', cook: 'Chef', server: 'Waiter' }),
+
+        makePrompt('words', 'Name something you find in a kitchen', {
+          plankton: ['Spoon', 'Fork', 'Knife', 'Plate', 'Bowl', 'Fridge', 'Oven', 'Stove', 'Microwave'],
+          tooClever: ['Spatula', 'Whisk', 'Colander', 'Garlic Press', 'Air Fryer', 'Toaster', 'Blender'],
+          schooler: ['Pan', 'Pot', 'Cup', 'Mug', 'Glass', 'Sink', 'Faucet', 'Dishwasher', 'Freezer', 'Cutting Board', 'Kettle', 'Coffee Maker', 'Mixer', 'Sponge', 'Soap', 'Paper Towels', 'Trash Can', 'Napkin', 'Apron', 'Timer', 'Tongs', 'Ladle', 'Peeler', 'Grater'],
+          rare: ['Rolling Pin', 'Measuring Cup', 'Measuring Spoon', 'Baking Sheet', 'Muffin Tin', 'Casserole Dish', 'Wok', 'Skillet', 'Dutch Oven', 'Slow Cooker', 'Pressure Cooker', 'Rice Cooker', 'Food Processor', 'Can Opener', 'Corkscrew', 'Bottle Opener', 'Strainer', 'Sieve', 'Funnel', 'Oven Mitt', 'Trivet', 'Salt Shaker'],
+          deepCut: ['Mandoline', 'Mortar and Pestle', 'Zester', 'Microplane', 'Baster', 'Meat Thermometer', 'Kitchen Scale', 'Pastry Brush', 'Bench Scraper', 'Potato Masher', 'Ricer', 'Salad Spinner', 'Tea Infuser', 'French Press', 'Moka Pot', 'Ramekin', 'Roasting Pan', 'Steamer Basket', 'Cheesecloth', 'Twine', 'Parchment Paper'],
+          krillion: ['Chinois', 'Spurtle', 'Mezzaluna', 'Tagine', 'Molcajete', 'Suribachi', 'Tamagoyaki Pan', 'Ebelskiver Pan', 'Bain-Marie', 'Salamander', 'Sous Vide', 'Immersion Circulator', 'Lame', 'Banneton', 'Spider Strainer', 'Tamis', 'Oyster Shucker', 'Melon Baller', 'Ulu', 'Muddler', 'Hawthorne Strainer']
+        }, { refrigerator: 'Fridge', fryingpan: 'Pan', saucepan: 'Pot', crockpot: 'Slow Cooker', instantpot: 'Pressure Cooker', whisk: 'Whisk', tongs: 'Tongs', spoons: 'Spoon', forks: 'Fork', knives: 'Knife' }),
+
+        makePrompt('words', 'Name a vehicle or mode of transportation', {
+          plankton: ['Car', 'Bus', 'Train', 'Airplane', 'Bicycle', 'Boat', 'Motorcycle'],
+          tooClever: ['Submarine', 'Helicopter', 'Hovercraft', 'Blimp', 'Scooter', 'Skateboard', 'Unicycle'],
+          schooler: ['Truck', 'Van', 'Taxi', 'Subway', 'Tram', 'Ferry', 'Ship', 'Yacht', 'Canoe', 'Kayak', 'Jet', 'Rocket', 'Moped', 'ATV', 'Tractor', 'Ambulance', 'Fire Truck', 'Limousine', 'RV', 'Rollerblades'],
+          rare: ['Trolley', 'Cable Car', 'Monorail', 'Gondola', 'Rickshaw', 'Tuk-Tuk', 'Segway', 'Jet Ski', 'Snowmobile', 'Sled', 'Wagon', 'Carriage', 'Chariot', 'Hot Air Balloon', 'Glider', 'Seaplane', 'Zeppelin', 'Catamaran', 'Sailboat', 'Cruise Ship', 'Tank', 'Bulldozer', 'Forklift'],
+          deepCut: ['Funicular', 'Maglev', 'Hoverboard', 'Pedicab', 'Sidecar', 'Trike', 'Tandem Bike', 'Penny-Farthing', 'Stagecoach', 'Barge', 'Tugboat', 'Icebreaker', 'Hydrofoil', 'Trimaran', 'Sampan', 'Junk', 'Dinghy', 'Skiff', 'Autogyro', 'Biplane', 'Dirigible', 'Space Shuttle'],
+          krillion: ['Palanquin', 'Sedan Chair', 'Troika', 'Dhow', 'Felucca', 'Coracle', 'Currach', 'Umiak', 'Pirogue', 'Wherry', 'Galleon', 'Caravel', 'Brigantine', 'Schooner', 'Bathyscaphe', 'Ornithopter', 'Ekranoplan', 'Gyrocopter', 'Velomobile', 'Dandy Horse', 'Draisine', 'Snowcat', 'Amphicar', 'Shinkansen']
+        }, { plane: 'Airplane', bike: 'Bicycle', motorbike: 'Motorcycle', cab: 'Taxi', metro: 'Subway', streetcar: 'Tram', tuktuk: 'Tuk-Tuk', jetski: 'Jet Ski' })
+      ];
+
+      /* =====================================================================
+         3. STATE MANAGEMENT & LOCALSTORAGE PERSISTENCE
+      ===================================================================== */
+      const STORAGE_KEYS = {
+        stats: 'krillion_unlimited_stats_v1',
+        skin: 'krillion_unlimited_skin_v1',
+        muted: 'krillion_unlimited_muted_v1',
+        customPacks: 'krillion_unlimited_custom_packs_v1'
+      };
+
+      const state = {
+        view: 'home', // 'home' | 'game' | 'summary'
+        mode: 'classic', // 'classic' | 'endless' | 'chill'
+        chillTimerEnabled: false,
+        selectedPack: 'all',
+        customPacks: [], // [{ id, name, icon, prompts }]
+
+        // Active Run State
+        promptQueue: [],
+        currentIndex: 0,
+        currentPrompt: null,
+        totalScore: 0,
+        totalDepth: 0,
+        streak: 0,
+        runHistory: [], // [{ prompt, answer, tierKey, points, meters, source, remark }]
+        wrongGuessesThisPrompt: [],
+        chillBestOnPrompt: null, // { answer, tierKey, points, meters, source, remark }
+        isCheckingAI: false,
+        promptResolved: false,
+
+        // Timer State
+        timerSeconds: 25,
+        timerRemaining: 25,
+        timerInterval: null,
+        timerPaused: false,
+        lastTickSecond: 6,
+
+        // Cosmetics & Audio
+        skinId: 'coral',
+        muted: false,
+        stats: {
+          bestDepth: 0,
+          krillionsFound: 0,
+          divesCompleted: 0
+        }
+      };
+
+      function loadPersistedState() {
+        try {
+          const savedStats = JSON.parse(localStorage.getItem(STORAGE_KEYS.stats) || 'null');
+          if (savedStats && typeof savedStats.bestDepth === 'number') {
+            state.stats = {
+              bestDepth: savedStats.bestDepth || 0,
+              krillionsFound: savedStats.krillionsFound || 0,
+              divesCompleted: savedStats.divesCompleted || 0
+            };
+          }
+          const savedSkin = localStorage.getItem(STORAGE_KEYS.skin);
+          if (savedSkin && KRILL_SKINS.some(s => s.id === savedSkin)) {
+            state.skinId = savedSkin;
+          }
+          const savedMuted = localStorage.getItem(STORAGE_KEYS.muted);
+          if (savedMuted === 'true') state.muted = true;
+
+          const savedCustom = JSON.parse(localStorage.getItem(STORAGE_KEYS.customPacks) || '[]');
+          if (Array.isArray(savedCustom)) {
+            state.customPacks = savedCustom.slice(0, 6); // Keep recent 6 custom packs
+          }
+        } catch (err) {
+          // Graceful fallback if localStorage unavailable
+        }
+      }
+
+      function saveStats() {
+        try {
+          localStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(state.stats));
+        } catch (err) {}
+      }
+
+      function saveSkin(id) {
+        state.skinId = id;
+        try { localStorage.setItem(STORAGE_KEYS.skin, id); } catch (err) {}
+      }
+
+      function saveMuted(val) {
+        state.muted = val;
+        try { localStorage.setItem(STORAGE_KEYS.muted, String(val)); } catch (err) {}
+      }
+
+      function saveCustomPacks() {
+        try {
+          localStorage.setItem(STORAGE_KEYS.customPacks, JSON.stringify(state.customPacks.slice(0, 6)));
+        } catch (err) {}
+      }
+
+      function getCurrentSkin() {
+        return KRILL_SKINS.find(s => s.id === state.skinId) || KRILL_SKINS[0];
+      }
+
+      function getOceanZone(depth) {
+        for (const z of OCEAN_ZONES) {
+          if (depth < z.max) return z;
+        }
+        return OCEAN_ZONES[OCEAN_ZONES.length - 1];
+      }
+
+      /* =====================================================================
+         4. SVG KRILL RENDERER (CUSTOMIZABLE SKIN BUDDY)
+      ===================================================================== */
+      function buildKrillSVG(skin, extraClass = '') {
+        return `
+          <svg viewBox="0 0 100 100" class="w-full h-full ${extraClass}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <radialGradient id="krillGlow-${skin.id}" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="${skin.accent}" stop-opacity="0.95"/>
+                <stop offset="100%" stop-color="${skin.body}" stop-opacity="1"/>
+              </radialGradient>
+            </defs>
+            <!-- Flowing Antennae -->
+            <path d="M26 36 C12 20, 8 10, 18 6" fill="none" stroke="${skin.accent}" stroke-width="2.4" stroke-linecap="round" opacity="0.85"/>
+            <path d="M28 40 C10 32, 4 24, 10 18" fill="none" stroke="${skin.accent}" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <!-- Tail Fan -->
+            <path d="M74 68 L90 60 L87 72 Z" fill="${skin.accent}" opacity="0.9"/>
+            <path d="M73 70 L92 75 L82 83 Z" fill="${skin.body}" opacity="0.95"/>
+            <!-- Cute Swimmeret Legs -->
+            <g stroke="${skin.accent}" stroke-width="2.6" stroke-linecap="round" opacity="0.85">
+              <line x1="36" y1="58" x2="30" y2="70"/>
+              <line x1="44" y1="62" x2="39" y2="74"/>
+              <line x1="53" y1="65" x2="49" y2="77"/>
+              <line x1="62" y1="67" x2="59" y2="78"/>
+            </g>
+            <!-- Segmented Curved Krill Body -->
+            <path d="M24 44 C26 28, 48 26, 62 38 C73 48, 76 62, 74 70 C65 72, 54 66, 44 60 C34 55, 24 53, 24 44 Z" fill="url(#krillGlow-${skin.id})" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
+            <!-- Carapace Segment Stripes -->
+            <path d="M46 33 C44 43, 41 51, 38 56" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M56 38 C53 47, 50 55, 47 61" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M65 46 C62 54, 59 60, 56 65" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="2" stroke-linecap="round"/>
+            <!-- Rostrum / Cute Nose Tip -->
+            <path d="M24 42 L17 44 L24 48 Z" fill="${skin.body}"/>
+            <!-- Shiny Big Eye -->
+            <circle cx="32" cy="41" r="5.2" fill="${skin.eye}"/>
+            <circle cx="30.5" cy="39.3" r="1.9" fill="#ffffff"/>
+            <circle cx="33.8" cy="42.4" r="0.9" fill="#ffffff" opacity="0.8"/>
+            <!-- Cute Blush Cheek -->
+            <ellipse cx="36" cy="48" rx="3" ry="1.8" fill="#ffffff" opacity="0.35"/>
+          </svg>
+        `;
+      }
+
+      function refreshAllKrillAvatars() {
+        const skin = getCurrentSkin();
+        document.getElementById('headerKrillIcon').innerHTML = buildKrillSVG(skin);
+        document.getElementById('homeKrillPreview').innerHTML = buildKrillSVG(skin);
+        document.getElementById('homeSkinLabel').textContent = skin.name;
+        document.getElementById('skinDotIndicator').style.background = skin.body;
+        document.getElementById('verticalKrillSvg').innerHTML = buildKrillSVG(skin);
+        document.getElementById('mobileKrillSvg').innerHTML = buildKrillSVG(skin);
+      }
+
+      /* =====================================================================
+         5. WEB AUDIO API SYNTHESIZER (NO EXTERNAL AUDIO URLS)
+      ===================================================================== */
+      const SoundFX = {
+        ctx: null,
+        ensureCtx() {
+          if (state.muted) return null;
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+          return this.ctx;
+        },
+
+        // Crisp water bubble plop on submit
+        playBubble() {
+          const ctx = this.ensureCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(280, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.085);
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.14, now + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        },
+
+        // Gentle muted thud for invalid answer
+        playInvalid() {
+          const ctx = this.ensureCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(165, now);
+          osc.frequency.exponentialRampToValueAtTime(92, now + 0.16);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.19);
+        },
+
+        // Soft clock tick on last 5 seconds
+        playTick(urgent = false) {
+          const ctx = this.ensureCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(urgent ? 880 : 660, now);
+          gain.gain.setValueAtTime(0.06, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.055);
+        },
+
+        // Escalating harmonic chime based on rarity tier
+        playTierChime(tierKey) {
+          const ctx = this.ensureCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+
+          const chords = {
+            plankton:  [330, 392],
+            tooClever: [349.23, 440],
+            schooler:  [392, 493.88, 587.33],
+            rare:      [440, 554.37, 659.25, 880],
+            deepCut:   [523.25, 659.25, 783.99, 987.77, 1174.66],
+            krillion:  [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98, 2093.0],
+            missed:    [246.94, 196.0]
+          };
+
+          const notes = chords[tierKey] || chords.schooler;
+          const isKrillion = tierKey === 'krillion';
+          const step = isKrillion ? 0.075 : 0.065;
+
+          notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = isKrillion ? 'triangle' : 'sine';
+            const start = now + idx * step;
+            const dur = isKrillion ? 0.85 : 0.42;
+
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.001, start);
+            gain.gain.linearRampToValueAtTime(isKrillion ? 0.14 : 0.11, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0008, start + dur);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + dur + 0.02);
+          });
+        }
+      };
+
+      function updateSoundButtonIcon() {
+        const btn = document.getElementById('soundToggleBtn');
+        if (state.muted) {
+          btn.innerHTML = `<svg class="w-5 h-5 text-rose-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>`;
+        } else {
+          btn.innerHTML = `<svg class="w-5 h-5 text-cyan-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>`;
+        }
+      }
+
+      /* =====================================================================
+         6. DYNAMIC DEEP-OCEAN HTML5 CANVAS BACKGROUND + CELEBRATION PARTICLES
+      ===================================================================== */
+      const OceanCanvas = {
+        canvas: null,
+        ctx: null,
+        width: 0,
+        height: 0,
+        targetDepth: 0,
+        displayDepth: 0,
+        bubbles: [],
+        plankton: [],
+        jellyfish: [],
+        burstParticles: [],
+        time: 0,
+
+        init() {
+          this.canvas = document.getElementById('oceanCanvas');
+          this.ctx = this.canvas.getContext('2d');
+          this.resize();
+          window.addEventListener('resize', () => this.resize());
+
+          // Seed ambient ocean particles
+          for (let i = 0; i < 42; i++) {
+            this.bubbles.push(this.createBubble(true));
+          }
+          for (let i = 0; i < 55; i++) {
+            this.plankton.push(this.createPlankton(true));
+          }
+          for (let i = 0; i < 6; i++) {
+            this.jellyfish.push(this.createJellyfish(true));
+          }
+        },
+
+        resize() {
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          this.width = window.innerWidth;
+          this.height = window.innerHeight;
+          this.canvas.width = Math.floor(this.width * dpr);
+          this.canvas.height = Math.floor(this.height * dpr);
+          this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        },
+
+        setTargetDepth(depth) {
+          this.targetDepth = Math.max(0, depth);
+        },
+
+        createBubble(randomY = false) {
+          return {
+            x: Math.random() * (this.width || 1200),
+            y: randomY ? Math.random() * (this.height || 800) : (this.height || 800) + 20,
+            r: 1.5 + Math.random() * 4.5,
+            speed: 0.35 + Math.random() * 0.95,
+            wobblePhase: Math.random() * Math.PI * 2,
+            alpha: 0.14 + Math.random() * 0.32
+          };
+        },
+
+        createPlankton(randomY = false) {
+          return {
+            x: Math.random() * (this.width || 1200),
+            y: randomY ? Math.random() * (this.height || 800) : (this.height || 800) + 10,
+            r: 1 + Math.random() * 2.5,
+            vx: (Math.random() - 0.5) * 0.25,
+            vy: -0.12 - Math.random() * 0.35,
+            phase: Math.random() * Math.PI * 2,
+            hueOffset: Math.random()
+          };
+        },
+
+        createJellyfish(randomY = false) {
+          return {
+            x: Math.random() * (this.width || 1200),
+            y: randomY ? Math.random() * (this.height || 800) : (this.height || 800) + 80,
+            size: 16 + Math.random() * 20,
+            speed: 0.2 + Math.random() * 0.3,
+            phase: Math.random() * Math.PI * 2,
+            hue: Math.random() > 0.5 ? 185 : 275
+          };
+        },
+
+        // Launch celebratory bioluminescent burst!
+        triggerCelebration(tierKey) {
+          const cx = this.width * 0.5;
+          const cy = this.height * 0.45;
+          const count = tierKey === 'krillion' ? 95 : tierKey === 'deepCut' ? 45 : 22;
+          const palette = tierKey === 'krillion'
+            ? ['#FFD166', '#00F5D4', '#FFF3B0', '#FF6B6B', '#38BDF8']
+            : tierKey === 'deepCut'
+              ? ['#C084FC', '#38BDF8', '#E9D5FF', '#00F5D4']
+              : ['#34D399', '#6EE7B7', '#38BDF8'];
+
+          for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = (tierKey === 'krillion' ? 2.5 : 1.8) + Math.random() * (tierKey === 'krillion' ? 7.5 : 4.5);
+            this.burstParticles.push({
+              x: cx + (Math.random() - 0.5) * 60,
+              y: cy + (Math.random() - 0.5) * 40,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed - 1.5,
+              r: 2 + Math.random() * (tierKey === 'krillion' ? 4.5 : 3),
+              color: palette[Math.floor(Math.random() * palette.length)],
+              life: 1.0,
+              decay: 0.008 + Math.random() * 0.012
+            });
+          }
+        },
+
+        lerpColor(rgbA, rgbB, t) {
+          const clamped = Math.max(0, Math.min(1, t));
+          return [
+            Math.round(rgbA[0] + (rgbB[0] - rgbA[0]) * clamped),
+            Math.round(rgbA[1] + (rgbB[1] - rgbA[1]) * clamped),
+            Math.round(rgbA[2] + (rgbB[2] - rgbA[2]) * clamped)
+          ];
+        },
+
+        getInterpolatedSkyColors(depth) {
+          const stops = [
+            { d: 0,    top: [11, 148, 186], bot: [10, 68, 108] },
+            { d: 1000, top: [12, 74, 130],  bot: [7, 29, 68] },
+            { d: 2500, top: [7, 24, 58],    bot: [3, 10, 30] },
+            { d: 4500, top: [17, 10, 44],   bot: [4, 3, 16] },
+            { d: 6500, top: [10, 5, 22],    bot: [1, 1, 7] }
+          ];
+          for (let i = 0; i < stops.length - 1; i++) {
+            if (depth <= stops[i + 1].d) {
+              const t = (depth - stops[i].d) / (stops[i + 1].d - stops[i].d);
+              return {
+                top: this.lerpColor(stops[i].top, stops[i + 1].top, t),
+                bot: this.lerpColor(stops[i].bot, stops[i + 1].bot, t)
+              };
+            }
+          }
+          const last = stops[stops.length - 1];
+          return { top: last.top, bot: last.bot };
+        },
+
+        render() {
+          this.time += 0.016;
+          // Smooth easing of depth for lush water transitions
+          this.displayDepth += (this.targetDepth - this.displayDepth) * 0.045;
+          const d = this.displayDepth;
+          const ctx = this.ctx;
+          const w = this.width;
+          const h = this.height;
+
+          // 1. Background Ocean Gradient
+          const colors = this.getInterpolatedSkyColors(d);
+          const grad = ctx.createLinearGradient(0, 0, 0, h);
+          grad.addColorStop(0, `rgb(${colors.top[0]}, ${colors.top[1]}, ${colors.top[2]})`);
+          grad.addColorStop(1, `rgb(${colors.bot[0]}, ${colors.bot[1]}, ${colors.bot[2]})`);
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, w, h);
+
+          // 2. Sunlight Zone Caustic Shafts (fade out by 1800m)
+          if (d < 1800) {
+            const rayOpacity = Math.max(0, 1 - d / 1800) * 0.14;
+            ctx.save();
+            for (let i = 0; i < 5; i++) {
+              const rx = (w * (0.12 + i * 0.2)) + Math.sin(this.time * 0.35 + i) * 35;
+              const rw = 65 + i * 18;
+              const rayGrad = ctx.createLinearGradient(rx, 0, rx + 90, h * 0.8);
+              rayGrad.addColorStop(0, `rgba(186, 244, 255, ${rayOpacity})`);
+              rayGrad.addColorStop(1, 'rgba(186, 244, 255, 0)');
+              ctx.fillStyle = rayGrad;
+              ctx.beginPath();
+              ctx.moveTo(rx - rw * 0.4, 0);
+              ctx.lineTo(rx + rw * 0.4, 0);
+              ctx.lineTo(rx + rw * 1.4, h * 0.85);
+              ctx.lineTo(rx - rw * 0.1, h * 0.85);
+              ctx.closePath();
+              ctx.fill();
+            }
+            ctx.restore();
+          }
+
+          // 3. Midnight / Abyssal Translucent Jellyfish (visible from 1800m+)
+          if (d > 1400) {
+            const jellyAlpha = Math.min(0.28, ((d - 1400) / 1400) * 0.28);
+            ctx.save();
+            for (const j of this.jellyfish) {
+              j.y -= j.speed;
+              j.x += Math.sin(this.time * 0.6 + j.phase) * 0.25;
+              if (j.y < -90) {
+                j.y = h + 80;
+                j.x = Math.random() * w;
+              }
+              const pulse = 1 + Math.sin(this.time * 2.2 + j.phase) * 0.12;
+              const hue = d > 6000 ? 45 : j.hue;
+              ctx.strokeStyle = `hsla(${hue}, 95%, 72%, ${jellyAlpha})`;
+              ctx.fillStyle = `hsla(${hue}, 95%, 68%, ${jellyAlpha * 0.45})`;
+              ctx.lineWidth = 1.4;
+
+              // Bell
+              ctx.beginPath();
+              ctx.arc(j.x, j.y, j.size * pulse, Math.PI, 0, false);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+
+              // Trailing Tentacles
+              for (let t = -2; t <= 2; t++) {
+                ctx.beginPath();
+                const tx = j.x + t * (j.size * 0.34);
+                ctx.moveTo(tx, j.y);
+                ctx.quadraticCurveTo(
+                  tx + Math.sin(this.time * 2.5 + t + j.phase) * 8,
+                  j.y + j.size * 1.1,
+                  tx + Math.cos(this.time * 1.8 + t) * 6,
+                  j.y + j.size * 2.1
+                );
+                ctx.stroke();
+              }
+            }
+            ctx.restore();
+          }
+
+          // 4. Rising Bubbles (stronger in upper zones, subtle deep down)
+          const bubbleFactor = Math.max(0.25, 1 - d / 5000);
+          for (const b of this.bubbles) {
+            b.y -= b.speed;
+            b.x += Math.sin(this.time * 1.4 + b.wobblePhase) * 0.3;
+            if (b.y < -15) {
+              Object.assign(b, this.createBubble(false));
+            }
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(186, 238, 255, ${b.alpha * bubbleFactor})`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+
+          // 5. Bioluminescent Plankton / Hadal Embers
+          const bioStrength = Math.min(1, 0.25 + d / 3200);
+          for (const p of this.plankton) {
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.y < -10) { p.y = h + 10; p.x = Math.random() * w; }
+            if (p.x < -10) p.x = w + 10;
+            if (p.x > w + 10) p.x = -10;
+
+            const twinkle = 0.4 + 0.6 * Math.abs(Math.sin(this.time * 1.6 + p.phase));
+            let colorStr;
+            if (d >= 6200) {
+              // Hadal Trench: Gold & Neon Coral bioluminescence
+              colorStr = p.hueOffset > 0.5
+                ? `rgba(255, 209, 102, ${twinkle * 0.85})`
+                : `rgba(255, 107, 139, ${twinkle * 0.78})`;
+            } else if (d >= 4200) {
+              // Abyssal Zone: Bioluminescent Cyan & Violet
+              colorStr = p.hueOffset > 0.5
+                ? `rgba(0, 245, 212, ${twinkle * 0.8})`
+                : `rgba(179, 136, 255, ${twinkle * 0.75})`;
+            } else {
+              colorStr = `rgba(125, 232, 255, ${twinkle * 0.55 * bioStrength})`;
+            }
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * (d > 4000 ? 1.2 : 1), 0, Math.PI * 2);
+            ctx.fillStyle = colorStr;
+            ctx.fill();
+          }
+
+          // 6. Celebration Burst Particles
+          for (let i = this.burstParticles.length - 1; i >= 0; i--) {
+            const bp = this.burstParticles[i];
+            bp.x += bp.vx;
+            bp.y += bp.vy;
+            bp.vy += 0.06; // gentle underwater drift
+            bp.vx *= 0.985;
+            bp.life -= bp.decay;
+            if (bp.life <= 0) {
+              this.burstParticles.splice(i, 1);
+              continue;
+            }
+            ctx.save();
+            ctx.globalAlpha = bp.life;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = bp.color;
+            ctx.fillStyle = bp.color;
+            ctx.beginPath();
+            ctx.arc(bp.x, bp.y, bp.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+
+          requestAnimationFrame(() => this.render());
+        }
+      };
+
+      /* =====================================================================
+         7. TEXT NORMALIZATION & LAYER 1 LOCAL MATCHING (WITH FUZZY TYPOS)
+      ===================================================================== */
+      function normalizeText(str) {
+        return String(str || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/&/g, ' and ')
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/^(the|a|an)\s+/i, '');
+      }
+
+      function compactKey(str) {
+        return normalizeText(str).replace(/\s+/g, '');
+      }
+
+      function singularVariants(norm) {
+        const set = new Set([norm]);
+        if (norm.endsWith('ies') && norm.length > 4) set.add(norm.slice(0, -3) + 'y');
+        if (norm.endsWith('es') && norm.length > 4) set.add(norm.slice(0, -2));
+        if (norm.endsWith('s') && norm.length > 3) set.add(norm.slice(0, -1));
+        if (!norm.endsWith('s')) set.add(norm + 's');
+        return Array.from(set);
+      }
+
+      function levenshtein(a, b) {
+        if (a === b) return 0;
+        const m = a.length, n = b.length;
+        if (m === 0) return n;
+        if (n === 0) return m;
+        const dp = new Array(n + 1);
+        for (let j = 0; j <= n; j++) dp[j] = j;
+        for (let i = 1; i <= m; i++) {
+          let prev = dp[0];
+          dp[0] = i;
+          for (let j = 1; j <= n; j++) {
+            const temp = dp[j];
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + cost);
+            prev = temp;
+          }
+        }
+        return dp[n];
+      }
+
+      // Layer 1 Instant Lookup in Local Prompt Bank
+      function checkLocalAnswer(promptObj, rawInput) {
+        const normInput = normalizeText(rawInput);
+        if (!normInput) return null;
+        const compactIn = compactKey(rawInput);
+
+        // 1. Check explicit aliases first
+        if (promptObj.aliases) {
+          for (const [aliasKey, targetCanonical] of Object.entries(promptObj.aliases)) {
+            if (compactKey(aliasKey) === compactIn || normalizeText(aliasKey) === normInput) {
+              // Find target in tiers
+              const targetNorm = normalizeText(targetCanonical);
+              for (const tierKey of TIER_ORDER) {
+                const list = promptObj.tiers[tierKey] || [];
+                const found = list.find(item => normalizeText(item) === targetNorm);
+                if (found) return { answer: found, tierKey, source: 'Instant Reef Bank' };
+              }
+            }
+          }
+        }
+
+        // Build flat candidate list
+        const candidates = [];
+        for (const tierKey of TIER_ORDER) {
+          const list = promptObj.tiers[tierKey] || [];
+          for (const item of list) {
+            candidates.push({
+              canonical: item,
+              norm: normalizeText(item),
+              compact: compactKey(item),
+              tierKey
+            });
+          }
+        }
+
+        // 2. Exact normalized or singular/plural match
+        const variants = singularVariants(normInput);
+        for (const c of candidates) {
+          const cVariants = singularVariants(c.norm);
+          if (c.compact === compactIn || variants.some(v => cVariants.includes(v))) {
+            return { answer: c.canonical, tierKey: c.tierKey, source: 'Instant Reef Bank' };
+          }
+        }
+
+        // 3. Fuzzy typo tolerance (1 edit for >=5 chars, 2 edits for >=8 chars)
+        if (compactIn.length >= 5) {
+          const maxDist = compactIn.length >= 8 ? 2 : 1;
+          let bestMatch = null;
+          let bestDist = Infinity;
+
+          for (const c of candidates) {
+            if (Math.abs(c.compact.length - compactIn.length) > maxDist) continue;
+            const dist = levenshtein(compactIn, c.compact);
+            if (dist <= maxDist && dist < bestDist) {
+              bestDist = dist;
+              bestMatch = c;
+            }
+          }
+          if (bestMatch) {
+            return { answer: bestMatch.canonical, tierKey: bestMatch.tierKey, source: 'Instant Reef Bank' };
+          }
+        }
+
+        return null;
+      }
+
+      /* =====================================================================
+         8. GEMINI API INTEGRATION (LAYER 2 SMART JUDGE & CUSTOM PACK GEN)
+            Uses gemini-3-flash-preview with exponential backoff.
+      ===================================================================== */
+      const GEMINI_API_KEY = ""; // Runtime-provided when empty
+      const GEMINI_MODEL = "gemini-3-flash-preview";
+
+      async function callGeminiStructured(payload, maxRetries = 3) {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+        let delay = 1000;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            const response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            if (response.status === 429 || response.status >= 500) {
+              if (attempt < maxRetries) {
+                await new Promise(res => setTimeout(res, delay));
+                delay *= 2;
+                continue;
+              }
+              throw new Error(`HTTP ${response.status}`);
+            }
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) throw new Error('Empty model response');
+            return JSON.parse(text);
+          } catch (err) {
+            if (attempt < maxRetries) {
+              await new Promise(res => setTimeout(res, delay));
+              delay *= 2;
+              continue;
+            }
+            throw err;
+          }
+        }
+      }
+
+      // Layer 2: Ask Gemini to judge obscure answers not in the local list
+      async function judgeAnswerWithGemini(promptQuestion, userAnswer) {
+        const systemInstruction = `You are the official trivia judge for "Krillion Unlimited", an ocean-themed rare-answer trivia game.
+Evaluate whether the player's answer STRICTLY and FACTUALLY satisfies the prompt (including any starting-letter, era, geography, or category rules).
+Reject gibberish, jokes that don't qualify, or inaccurate answers (valid = false).
+If valid = true, assign a rarity tier based on how rarely an average human player would think of this answer:
+- "plankton": Top 5 most obvious answers everyone thinks of immediately.
+- "tooClever": Common "trying to be quirky/clever" answers that lots of players pick.
+- "schooler": Familiar, well-known valid answer.
+- "rare": Uncommon, off-the-beaten-path valid answer.
+- "deepCut": Niche connoisseur answer very few people think of.
+- "krillion": Ultra-obscure, genuinely valid gem almost nobody would think of.
+Also write a witty 1-sentence ocean-themed remark (max 14 words).`;
+
+        const payload = {
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          contents: [{
+            parts: [{ text: `Prompt: "${promptQuestion}"\nPlayer's answer: "${userAnswer}"` }]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                valid: { type: "BOOLEAN" },
+                canonicalName: { type: "STRING" },
+                tier: {
+                  type: "STRING",
+                  enum: ["plankton", "tooClever", "schooler", "rare", "deepCut", "krillion"]
+                },
+                remark: { type: "STRING" }
+              },
+              required: ["valid", "canonicalName", "tier", "remark"]
+            }
+          }
+        };
+
+        return await callGeminiStructured(payload, 2);
+      }
+
+      // Custom AI Pack Generator: 7 prompts with tiered sample answers on any topic
+      async function generateCustomPackWithGemini(topic) {
+        const systemInstruction = `You design fun, open-ended trivia prompts for "Krillion Unlimited" (a rare-answer trivia game).
+Given a topic, generate exactly 7 diverse, open-ended prompts ("Name a ...") where many valid answers exist from obvious to super obscure.
+For each prompt, provide 4 to 6 accurate sample answers in EVERY ONE of the 6 rarity tiers:
+plankton (super obvious), tooClever (quirky common picks), schooler (solid known), rare (uncommon), deepCut (niche expert), krillion (ultra-obscure valid gems).`;
+
+        const payload = {
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          contents: [{
+            parts: [{ text: `Create a 7-prompt Krillion trivia pack for the topic: "${topic}"` }]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                packName: { type: "STRING" },
+                prompts: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      q: { type: "STRING" },
+                      plankton: { type: "ARRAY", items: { type: "STRING" } },
+                      tooClever: { type: "ARRAY", items: { type: "STRING" } },
+                      schooler: { type: "ARRAY", items: { type: "STRING" } },
+                      rare: { type: "ARRAY", items: { type: "STRING" } },
+                      deepCut: { type: "ARRAY", items: { type: "STRING" } },
+                      krillion: { type: "ARRAY", items: { type: "STRING" } }
+                    },
+                    required: ["q", "plankton", "tooClever", "schooler", "rare", "deepCut", "krillion"]
+                  }
+                }
+              },
+              required: ["packName", "prompts"]
+            }
+          }
+        };
+
+        return await callGeminiStructured(payload, 2);
+      }
+
+      /* =====================================================================
+         9. TOAST NOTIFICATIONS & UI HELPERS
+      ===================================================================== */
+      function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        const colors = {
+          info: 'border-cyan-300/40 text-cyan-100',
+          success: 'border-emerald-300/50 text-emerald-100',
+          warn: 'border-amber-300/50 text-amber-100',
+          error: 'border-rose-300/50 text-rose-100'
+        };
+        toast.className = `pointer-events-auto ocean-glass-strong rounded-2xl px-4 py-3 text-sm font-semibold border ${colors[type] || colors.info} card-enter shadow-xl`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(8px)';
+          setTimeout(() => toast.remove(), 320);
+        }, 3000);
+      }
+
+      function randomItem(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
+      function shuffleArray(arr) {
+        const copy = arr.slice();
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+      }
+
+      function switchView(viewName) {
+        state.view = viewName;
+        document.getElementById('homeView').classList.toggle('hidden', viewName !== 'home');
+        document.getElementById('gameView').classList.toggle('hidden', viewName !== 'game');
+        document.getElementById('summaryView').classList.toggle('hidden', viewName !== 'summary');
+        document.getElementById('quitToMenuBtn').classList.toggle('hidden', viewName !== 'game');
+
+        if (viewName === 'home') {
+          clearTimer();
+          OceanCanvas.setTargetDepth(0);
+          updateHeaderZone(0);
+          renderHomeStats();
+        }
+      }
+
+      /* =====================================================================
+         10. RENDERING HOME SCREEN (PACKS, STATS, SKINS)
+      ===================================================================== */
+      function getPromptsForPack(packId) {
+        if (packId === 'all') return BUILTIN_PROMPTS.slice();
+        const custom = state.customPacks.find(p => p.id === packId);
+        if (custom) return custom.prompts.slice();
+        return BUILTIN_PROMPTS.filter(p => p.pack === packId);
+      }
+
+      function getPackDisplayName(packId) {
+        const meta = PACK_META.find(p => p.id === packId);
+        if (meta) return `${meta.icon} ${meta.name}`;
+        const custom = state.customPacks.find(p => p.id === packId);
+        if (custom) return `✨ ${custom.name}`;
+        return 'All Mix';
+      }
+
+      function renderHomeStats() {
+        document.getElementById('statBestDepth').textContent = `${state.stats.bestDepth.toLocaleString()}m`;
+        document.getElementById('statKrillions').textContent = state.stats.krillionsFound.toLocaleString();
+        document.getElementById('statDives').textContent = state.stats.divesCompleted.toLocaleString();
+      }
+
+      function renderPackPills() {
+        const container = document.getElementById('packPillsContainer');
+        container.innerHTML = '';
+
+        const allPacks = [
+          ...PACK_META.map(m => ({ ...m, isCustom: false })),
+          ...state.customPacks.map(c => ({ id: c.id, name: c.name, icon: '✨', isCustom: true }))
+        ];
+
+        allPacks.forEach(pack => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          const isSelected = state.selectedPack === pack.id;
+          btn.className = `px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all min-h-[40px] flex items-center gap-1.5 ${
+            isSelected
+              ? 'pill-active'
+              : pack.isCustom
+                ? 'bg-purple-500/15 border-purple-300/30 text-purple-100 hover:bg-purple-500/25'
+                : 'bg-slate-950/35 border-sky-200/15 text-sky-100/85 hover:bg-slate-900/55 hover:border-sky-200/35'
+          }`;
+          btn.innerHTML = `<span>${pack.icon}</span><span>${escapeHtml(pack.name)}</span>`;
+          btn.addEventListener('click', () => {
+            state.selectedPack = pack.id;
+            SoundFX.playBubble();
+            renderPackPills();
+          });
+          container.appendChild(btn);
+        });
+
+        const count = getPromptsForPack(state.selectedPack).length;
+        document.getElementById('packCountBadge').textContent = `${count} prompt${count === 1 ? '' : 's'} ready`;
+      }
+
+      function renderSkinsModal() {
+        const grid = document.getElementById('skinsGrid');
+        grid.innerHTML = '';
+
+        KRILL_SKINS.forEach(skin => {
+          const active = state.skinId === skin.id;
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = `p-3.5 rounded-2xl border flex flex-col items-center gap-2 transition-all ${
+            active
+              ? 'pill-active scale-[1.02]'
+              : 'bg-slate-950/40 border-sky-200/15 hover:bg-slate-900/60 hover:border-sky-200/35'
+          }`;
+          card.innerHTML = `
+            <div class="w-16 h-16">${buildKrillSVG(skin)}</div>
+            <div class="text-xs font-bold text-white text-center">${skin.name}</div>
+            <div class="text-[10px] font-mono ${active ? 'text-cyan-200' : 'text-sky-200/50'}">${active ? 'EQUIPPED' : 'FREE'}</div>
+          `;
+          card.addEventListener('click', () => {
+            saveSkin(skin.id);
+            SoundFX.playBubble();
+            refreshAllKrillAvatars();
+            renderSkinsModal();
+          });
+          grid.appendChild(card);
+        });
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      /* =====================================================================
+         11. DEPTH GAUGE & HEADER UPDATES
+      ===================================================================== */
+      function updateHeaderZone(depth) {
+        const zone = getOceanZone(depth);
+        document.getElementById('headerZoneSub').textContent = `${zone.name} • ${depth.toLocaleString()}m`;
+      }
+
+      function updateDepthDisplays(deltaMeters = 0) {
+        const depth = state.totalDepth;
+        const zone = getOceanZone(depth);
+        OceanCanvas.setTargetDepth(depth);
+        updateHeaderZone(depth);
+
+        // Max scale for gauge: 7,000m in Classic, dynamic scaling above 7,000m in Endless/Chill
+        const maxScale = Math.max(7000, Math.ceil(depth / 1000) * 1000);
+        const pct = Math.max(2, Math.min(98, (depth / maxScale) * 100));
+
+        // Desktop vertical gauge
+        document.getElementById('desktopDepthValue').textContent = `${depth.toLocaleString()}m`;
+        const dZone = document.getElementById('desktopZoneBadge');
+        dZone.textContent = zone.name;
+        dZone.className = `inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/10 border border-sky-200/20 ${zone.badgeColor}`;
+        document.getElementById('verticalDepthFill').style.height = `${pct}%`;
+        document.getElementById('verticalKrillWrapper').style.top = `${pct}%`;
+        document.getElementById('desktopScoreValue').textContent = state.totalScore.toLocaleString();
+        document.getElementById('desktopStreakValue').textContent = state.streak > 0 ? `🔥 ${state.streak}` : '0';
+
+        // Mobile horizontal gauge
+        document.getElementById('mobileDepthValue').textContent = depth.toLocaleString();
+        document.getElementById('mobileDepthTarget').textContent = state.mode === 'classic' ? '/ 7,000m' : 'deep';
+        document.getElementById('mobileZoneBadge').textContent = zone.name;
+        document.getElementById('mobileDepthFill').style.width = `${pct}%`;
+        document.getElementById('mobileKrillWrapper').style.left = `${pct}%`;
+
+        const mStreak = document.getElementById('mobileStreakBadge');
+        if (state.streak > 1) {
+          mStreak.classList.remove('hidden');
+          mStreak.textContent = `🔥 ${state.streak}`;
+        } else {
+          mStreak.classList.add('hidden');
+        }
+
+        // Animated diving burst & floating +XXXm popup
+        if (deltaMeters > 0) {
+          const vKrill = document.getElementById('verticalKrillSvg');
+          vKrill.classList.remove('krill-dive-burst');
+          void vKrill.offsetWidth;
+          vKrill.classList.add('krill-dive-burst');
+
+          const anchor = document.getElementById('depthPopupAnchor');
+          const pop = document.createElement('div');
+          pop.className = 'depth-popup font-mono font-black text-sm px-2.5 py-1 rounded-xl bg-slate-950/85 border border-cyan-300/50 text-amber-300 shadow-lg';
+          pop.textContent = `+${deltaMeters.toLocaleString()}m!`;
+          anchor.appendChild(pop);
+          setTimeout(() => pop.remove(), 1550);
+        }
+      }
+
+      /* =====================================================================
+         12. CORE GAMEPLAY LOOP (START, PROMPT, TIMER, VALIDATION, REVEAL)
+      ===================================================================== */
+      function startNewDive() {
+        const pool = getPromptsForPack(state.selectedPack);
+        if (!pool.length) {
+          showToast('No prompts available in this pack.', 'error');
+          return;
+        }
+
+        state.promptQueue = shuffleArray(pool);
+        // Classic mode plays 7 prompts (or full pack size if fewer)
+        if (state.mode === 'classic') {
+          state.promptQueue = state.promptQueue.slice(0, Math.min(7, state.promptQueue.length));
+        }
+
+        state.currentIndex = 0;
+        state.totalScore = 0;
+        state.totalDepth = 0;
+        state.streak = 0;
+        state.runHistory = [];
+        state.isCheckingAI = false;
+
+        // Mode labels
+        const modeNames = {
+          classic: '🌊 Classic Dive',
+          endless: '♾️ Endless Abyss',
+          chill: '🫧 Chill Practice'
+        };
+        document.getElementById('activeModeBadge').textContent = modeNames[state.mode];
+        document.getElementById('activePackBadge').textContent = getPackDisplayName(state.selectedPack);
+        document.getElementById('endEndlessBtn').classList.toggle('hidden', state.mode === 'classic');
+
+        SoundFX.playBubble();
+        switchView('game');
+        updateDepthDisplays(0);
+        loadPromptAtCurrentIndex();
+      }
+
+      function loadPromptAtCurrentIndex() {
+        // Endless & Chill replenish queue infinitely when exhausted
+        if (state.currentIndex >= state.promptQueue.length) {
+          if (state.mode === 'classic') {
+            finishDiveAndShowSummary();
+            return;
+          } else {
+            const fresh = shuffleArray(getPromptsForPack(state.selectedPack));
+            state.promptQueue.push(...fresh);
+          }
+        }
+
+        state.currentPrompt = state.promptQueue[state.currentIndex];
+        state.wrongGuessesThisPrompt = [];
+        state.chillBestOnPrompt = null;
+        state.promptResolved = false;
+        state.isCheckingAI = false;
+
+        // Progress badge
+        const progText = state.mode === 'classic'
+          ? `DIVE ${state.currentIndex + 1} / ${state.promptQueue.length}`
+          : `DIVE #${state.currentIndex + 1}`;
+        document.getElementById('promptProgressBadge').textContent = progText;
+
+        // Populate prompt card
+        document.getElementById('promptQuestionText').textContent = state.currentPrompt.q;
+        document.getElementById('inlineFeedbackMsg').textContent = '';
+        document.getElementById('aiCheckingIndicator').classList.add('hidden');
+        document.getElementById('chillBestBanner').classList.add('hidden');
+        document.getElementById('previousGuessesRow').classList.add('hidden');
+        document.getElementById('previousGuessesRow').innerHTML = '';
+
+        const input = document.getElementById('answerInput');
+        input.value = '';
+        input.disabled = false;
+        document.getElementById('submitAnswerBtn').disabled = false;
+
+        // Show Prompt Card, Hide Reveal Card
+        document.getElementById('revealCard').classList.add('hidden');
+        const pCard = document.getElementById('promptCard');
+        pCard.classList.remove('hidden');
+        pCard.classList.remove('card-enter');
+        void pCard.offsetWidth;
+        pCard.classList.add('card-enter');
+
+        // Start Timer (or infinite in Chill mode)
+        startPromptTimer();
+
+        // Auto-focus input
+        setTimeout(() => input.focus(), 60);
+      }
+
+      function clearTimer() {
+        if (state.timerInterval) {
+          clearInterval(state.timerInterval);
+          state.timerInterval = null;
+        }
+      }
+
+      function shouldUseTimer() {
+        return state.mode !== 'chill' || state.chillTimerEnabled;
+      }
+
+      function startPromptTimer() {
+        clearTimer();
+        state.timerPaused = false;
+        const timerText = document.getElementById('timerText');
+        const timerBar = document.getElementById('timerBarFill');
+
+        if (!shouldUseTimer()) {
+          timerText.textContent = '∞ Chill Mode';
+          timerText.className = 'font-bold text-teal-300 text-sm';
+          timerBar.style.width = '100%';
+          timerBar.className = 'h-full rounded-full bg-gradient-to-r from-teal-300 via-emerald-400 to-cyan-400';
+          return;
+        }
+
+        state.timerSeconds = 25;
+        state.timerRemaining = 25;
+        state.lastTickSecond = 6;
+        updateTimerUI();
+
+        const startStamp = performance.now();
+        let lastFrame = startStamp;
+
+        state.timerInterval = setInterval(() => {
+          if (state.timerPaused || state.promptResolved) {
+            lastFrame = performance.now();
+            return;
+          }
+          const now = performance.now();
+          const dt = (now - lastFrame) / 1000;
+          lastFrame = now;
+          state.timerRemaining = Math.max(0, state.timerRemaining - dt);
+          updateTimerUI();
+
+          const ceilSec = Math.ceil(state.timerRemaining);
+          if (ceilSec <= 5 && ceilSec > 0 && ceilSec < state.lastTickSecond) {
+            state.lastTickSecond = ceilSec;
+            SoundFX.playTick(ceilSec <= 2);
+          }
+
+          if (state.timerRemaining <= 0) {
+            clearTimer();
+            handleSkipOrTimeout(true);
+          }
+        }, 50);
+      }
+
+      function updateTimerUI() {
+        const rem = state.timerRemaining;
+        const pct = Math.max(0, (rem / state.timerSeconds) * 100);
+        const timerText = document.getElementById('timerText');
+        const timerBar = document.getElementById('timerBarFill');
+
+        timerText.textContent = `${rem.toFixed(1)}s`;
+        timerBar.style.width = `${pct}%`;
+
+        if (rem <= 5) {
+          timerText.className = 'font-bold text-rose-300 text-sm animate-pulse';
+          timerBar.className = 'h-full rounded-full bg-gradient-to-r from-rose-500 to-amber-400 transition-[width] duration-75';
+        } else if (rem <= 10) {
+          timerText.className = 'font-bold text-amber-300 text-sm';
+          timerBar.className = 'h-full rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 transition-[width] duration-75';
+        } else {
+          timerText.className = 'font-bold text-cyan-300 text-sm';
+          timerBar.className = 'h-full rounded-full bg-gradient-to-r from-teal-300 via-cyan-400 to-sky-400 transition-[width] duration-75';
+        }
+      }
+
+      function shakeInputWithFeedback(msg) {
+        SoundFX.playInvalid();
+        const wrap = document.getElementById('inputGroupWrapper');
+        wrap.classList.remove('animate-shake');
+        void wrap.offsetWidth;
+        wrap.classList.add('animate-shake');
+        document.getElementById('inlineFeedbackMsg').textContent = msg;
+        const input = document.getElementById('answerInput');
+        input.select();
+        input.focus();
+      }
+
+      function addTriedChip(text, isWrong = true) {
+        const row = document.getElementById('previousGuessesRow');
+        row.classList.remove('hidden');
+        row.classList.add('flex');
+        const chip = document.createElement('span');
+        chip.className = isWrong
+          ? 'px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-300/25 text-rose-200/80 text-xs line-through'
+          : 'px-2.5 py-1 rounded-lg bg-teal-500/20 border border-teal-300/35 text-teal-100 text-xs font-semibold';
+        chip.textContent = text;
+        row.appendChild(chip);
+      }
+
+      async function handleSubmitAnswer(e) {
+        e.preventDefault();
+        if (state.isCheckingAI || state.promptResolved) return;
+
+        const input = document.getElementById('answerInput');
+        const raw = input.value.trim();
+        if (!raw) {
+          shakeInputWithFeedback('Type an answer to dive!');
+          return;
+        }
+
+        const norm = normalizeText(raw);
+        if (!norm) {
+          shakeInputWithFeedback('Please enter letters or numbers.');
+          return;
+        }
+
+        // Prevent exact duplicate wrong attempt
+        if (state.wrongGuessesThisPrompt.includes(norm)) {
+          shakeInputWithFeedback('Already tried that one — try another!');
+          return;
+        }
+
+        // Prevent re-submitting exact same answer in Chill retry
+        if (state.chillBestOnPrompt && normalizeText(state.chillBestOnPrompt.answer) === norm) {
+          shakeInputWithFeedback('You already scored with that — aim rarer!');
+          return;
+        }
+
+        SoundFX.playBubble();
+        document.getElementById('inlineFeedbackMsg').textContent = '';
+
+        // LAYER 1: Instant Local Bank Lookup
+        const localHit = checkLocalAnswer(state.currentPrompt, raw);
+        if (localHit) {
+          const tierObj = TIERS[localHit.tierKey];
+          const remark = randomItem(tierObj.remarks);
+          resolveValidAnswer(localHit.answer, localHit.tierKey, remark, localHit.source);
+          return;
+        }
+
+        // Quick rejection of 1-character non-valid gibberish (except programming languages like C, R, D, J, K, Q)
+        if (raw.length === 1 && !/programming language/i.test(state.currentPrompt.q)) {
+          state.wrongGuessesThisPrompt.push(norm);
+          addTriedChip(raw, true);
+          shakeInputWithFeedback('Not on the list — try again!');
+          return;
+        }
+
+        // LAYER 2: Gemini API Smart Judge (pause timer while checking)
+        state.isCheckingAI = true;
+        state.timerPaused = true;
+        input.disabled = true;
+        document.getElementById('submitAnswerBtn').disabled = true;
+        document.getElementById('aiCheckingIndicator').classList.remove('hidden');
+
+        try {
+          const verdict = await judgeAnswerWithGemini(state.currentPrompt.q, raw);
+          // Guard if player navigated away mid-request
+          if (state.view !== 'game' || state.promptResolved) return;
+
+          state.isCheckingAI = false;
+          state.timerPaused = false;
+          document.getElementById('aiCheckingIndicator').classList.add('hidden');
+          input.disabled = false;
+          document.getElementById('submitAnswerBtn').disabled = false;
+
+          if (verdict && verdict.valid && TIERS[verdict.tier]) {
+            const cleanAnswer = verdict.canonicalName || raw;
+            const remark = verdict.remark || randomItem(TIERS[verdict.tier].remarks);
+            resolveValidAnswer(cleanAnswer, verdict.tier, remark, 'Gemini Deep Judge');
+          } else {
+            state.wrongGuessesThisPrompt.push(norm);
+            addTriedChip(raw, true);
+            shakeInputWithFeedback(verdict?.remark ? `Nope — ${verdict.remark}` : 'Not on the list — try again!');
+          }
+        } catch (err) {
+          if (state.view !== 'game' || state.promptResolved) return;
+          state.isCheckingAI = false;
+          state.timerPaused = false;
+          document.getElementById('aiCheckingIndicator').classList.add('hidden');
+          input.disabled = false;
+          document.getElementById('submitAnswerBtn').disabled = false;
+
+          state.wrongGuessesThisPrompt.push(norm);
+          addTriedChip(raw, true);
+          shakeInputWithFeedback('Not recognized in our charts — try another answer!');
+        }
+      }
+
+      function resolveValidAnswer(answerText, tierKey, remark, source) {
+        clearTimer();
+        state.promptResolved = true;
+        const tier = TIERS[tierKey];
+
+        // Calculate score & depth delta (supports upgrading in Chill Mode retries!)
+        let deltaPoints = tier.points;
+        let deltaMeters = tier.meters;
+        let upgradedNote = '';
+
+        if (state.chillBestOnPrompt) {
+          if (tier.points > state.chillBestOnPrompt.points) {
+            deltaPoints = tier.points - state.chillBestOnPrompt.points;
+            deltaMeters = tier.meters - state.chillBestOnPrompt.meters;
+            upgradedNote = ` (Upgraded +${deltaMeters}m!)`;
+            state.chillBestOnPrompt = { answer: answerText, tierKey, points: tier.points, meters: tier.meters, source, remark };
+            // Replace last history entry for this prompt
+            state.runHistory[state.runHistory.length - 1] = {
+              prompt: state.currentPrompt.q,
+              answer: answerText,
+              tierKey,
+              points: tier.points,
+              meters: tier.meters,
+              source,
+              remark
+            };
+          } else {
+            deltaPoints = 0;
+            deltaMeters = 0;
+            upgradedNote = ` (Keeping your deeper ${TIERS[state.chillBestOnPrompt.tierKey].label} pick!)`;
+          }
+        } else {
+          state.streak += 1;
+          state.chillBestOnPrompt = { answer: answerText, tierKey, points: tier.points, meters: tier.meters, source, remark };
+          state.runHistory.push({
+            prompt: state.currentPrompt.q,
+            answer: answerText,
+            tierKey,
+            points: tier.points,
+            meters: tier.meters,
+            source,
+            remark
+          });
+        }
+
+        state.totalScore += deltaPoints;
+        state.totalDepth += deltaMeters;
+
+        if (tierKey === 'krillion' && deltaPoints > 0) {
+          state.stats.krillionsFound += 1;
+          saveStats();
+        }
+
+        SoundFX.playTierChime(tierKey);
+        if (tierKey === 'krillion' || tierKey === 'deepCut' || tierKey === 'rare') {
+          OceanCanvas.triggerCelebration(tierKey);
+        }
+
+        updateDepthDisplays(deltaMeters);
+        showRevealCard(answerText, tierKey, remark + upgradedNote, source);
+      }
+
+      function handleSkipOrTimeout(isTimeout = false) {
+        if (state.promptResolved) return;
+        clearTimer();
+        state.isCheckingAI = false;
+        state.promptResolved = true;
+
+        // If player already got a valid answer earlier in Chill mode, don't overwrite it with a miss
+        if (!state.chillBestOnPrompt) {
+          state.streak = 0;
+          state.runHistory.push({
+            prompt: state.currentPrompt.q,
+            answer: isTimeout ? 'Timed Out' : 'Skipped',
+            tierKey: 'missed',
+            points: 0,
+            meters: 0,
+            source: isTimeout ? 'Oxygen Depleted' : 'Surfaced',
+            remark: isTimeout ? 'Ran out of oxygen! Check out the rare answers below.' : 'Skipped this dive — see what lurked below!'
+          });
+          SoundFX.playTierChime('missed');
+          updateDepthDisplays(0);
+          showRevealCard(
+            isTimeout ? 'Out of Oxygen!' : 'Skipped Dive',
+            'missed',
+            isTimeout ? 'Time ran out! Here are some obvious vs ultra-rare picks:' : 'Surfaced early — check out some rare gems below!',
+            isTimeout ? 'Timer Expired' : 'Skipped'
+          );
+        } else {
+          // Already had a valid answer in Chill retry, just show their best reveal
+          const b = state.chillBestOnPrompt;
+          showRevealCard(b.answer, b.tierKey, b.remark, b.source);
+        }
+      }
+
+      function showRevealCard(answerText, tierKey, remark, source) {
+        const tier = TIERS[tierKey];
+        document.getElementById('promptCard').classList.add('hidden');
+        const rCard = document.getElementById('revealCard');
+        rCard.classList.remove('hidden');
+        rCard.classList.remove('card-enter');
+        void rCard.offsetWidth;
+        rCard.classList.add('card-enter');
+
+        document.getElementById('revealPromptEcho').textContent = state.currentPrompt.q;
+        document.getElementById('revealAnswerDisplay').textContent = answerText;
+        document.getElementById('revealWittyRemark').textContent = `"${remark}"`;
+
+        const tierBox = document.getElementById('revealTierBox');
+        tierBox.className = `flex flex-col items-center justify-center px-6 py-4 rounded-2xl border min-w-[185px] text-center ${tier.bgClass}`;
+        document.getElementById('revealTierEmoji').textContent = tier.emoji;
+        document.getElementById('revealTierName').textContent = tier.label;
+        document.getElementById('revealPointsGain').textContent = tier.points > 0
+          ? `+${tier.points} pts • +${tier.meters.toLocaleString()}m`
+          : '+0 pts • +0m';
+        document.getElementById('revealJudgeSource').textContent = source;
+
+        // Populate Plankton vs Krillion comparison chips
+        const planktonWrap = document.getElementById('revealPlanktonChips');
+        const krillionWrap = document.getElementById('revealKrillionChips');
+        planktonWrap.innerHTML = '';
+        krillionWrap.innerHTML = '';
+
+        const pSamples = shuffleArray(state.currentPrompt.tiers.plankton || []).slice(0, 5);
+        const kSamples = shuffleArray(state.currentPrompt.tiers.krillion || []).slice(0, 5);
+
+        pSamples.forEach(item => {
+          const span = document.createElement('span');
+          span.className = 'px-2.5 py-1 rounded-lg bg-slate-500/25 border border-slate-300/20 text-slate-200 text-xs font-medium';
+          span.textContent = item;
+          planktonWrap.appendChild(span);
+        });
+        kSamples.forEach(item => {
+          const span = document.createElement('span');
+          span.className = 'px-2.5 py-1 rounded-lg bg-amber-400/20 border border-amber-300/35 text-amber-100 text-xs font-semibold';
+          span.textContent = item;
+          krillionWrap.appendChild(span);
+        });
+
+        // Reset collapsible full tier explorer
+        const expanded = document.getElementById('allTiersExpanded');
+        expanded.classList.add('hidden');
+        expanded.innerHTML = '';
+        document.getElementById('toggleAllTiersLabel').textContent = 'Show more sample tiers';
+        document.getElementById('toggleAllTiersChevron').style.transform = 'rotate(0deg)';
+
+        ['tooClever', 'schooler', 'rare', 'deepCut'].forEach(tk => {
+          const tObj = TIERS[tk];
+          const items = shuffleArray(state.currentPrompt.tiers[tk] || []).slice(0, 6);
+          if (!items.length) return;
+          const box = document.createElement('div');
+          box.className = 'rounded-xl bg-slate-950/40 border border-sky-200/10 p-3 space-y-1.5';
+          box.innerHTML = `
+            <div class="flex items-center justify-between font-bold">
+              <span>${tObj.emoji} ${tObj.label}</span>
+              <span class="font-mono opacity-75">+${tObj.meters}m</span>
+            </div>
+            <div class="text-sky-100/80 leading-relaxed">${items.map(escapeHtml).join(' • ')}</div>
+          `;
+          expanded.appendChild(box);
+        });
+
+        // Chill Mode: Show "Retry for Rarer" button (unless already hit Krillion!)
+        const retryBtn = document.getElementById('retryForRarerBtn');
+        const canRetryChill = state.mode === 'chill' && (!state.chillBestOnPrompt || state.chillBestOnPrompt.tierKey !== 'krillion');
+        retryBtn.classList.toggle('hidden', !canRetryChill);
+
+        // Next button label
+        const isLastClassic = state.mode === 'classic' && (state.currentIndex + 1 >= state.promptQueue.length);
+        document.getElementById('nextPromptBtnText').textContent = isLastClassic ? 'View Dive Log' : 'Dive Deeper';
+      }
+
+      // Chill Mode: Return to same prompt to hunt for a rarer answer!
+      function handleRetryForRarer() {
+        state.promptResolved = false;
+        document.getElementById('revealCard').classList.add('hidden');
+        document.getElementById('promptCard').classList.remove('hidden');
+
+        if (state.chillBestOnPrompt) {
+          const best = state.chillBestOnPrompt;
+          const banner = document.getElementById('chillBestBanner');
+          banner.classList.remove('hidden');
+          document.getElementById('chillBestAnswerText').textContent = best.answer;
+          document.getElementById('chillBestTierBadge').textContent = `${TIERS[best.tierKey].emoji} ${TIERS[best.tierKey].label} (+${best.meters}m)`;
+          addTriedChip(`${best.answer} (+${best.meters}m)`, false);
+        }
+
+        const input = document.getElementById('answerInput');
+        input.value = '';
+        input.disabled = false;
+        document.getElementById('submitAnswerBtn').disabled = false;
+        document.getElementById('inlineFeedbackMsg').textContent = '';
+
+        startPromptTimer();
+        setTimeout(() => input.focus(), 60);
+      }
+
+      function advanceToNextPrompt() {
+        SoundFX.playBubble();
+        state.currentIndex += 1;
+        if (state.mode === 'classic' && state.currentIndex >= state.promptQueue.length) {
+          finishDiveAndShowSummary();
+        } else {
+          loadPromptAtCurrentIndex();
+        }
+      }
+
+      /* =====================================================================
+         13. END-OF-DIVE LOG SUMMARY & CLIPBOARD COPY
+      ===================================================================== */
+      function finishDiveAndShowSummary() {
+        clearTimer();
+        if (state.runHistory.length === 0) {
+          switchView('home');
+          return;
+        }
+
+        // Update personal records
+        const isNewBest = state.totalDepth > state.stats.bestDepth && state.totalDepth > 0;
+        if (isNewBest) {
+          state.stats.bestDepth = state.totalDepth;
+        }
+        state.stats.divesCompleted += 1;
+        saveStats();
+
+        const zone = getOceanZone(state.totalDepth);
+        const krillionCount = state.runHistory.filter(h => h.tierKey === 'krillion').length;
+        const answeredCount = state.runHistory.filter(h => h.tierKey !== 'missed').length;
+
+        document.getElementById('newBestBadge').classList.toggle('hidden', !isNewBest);
+        document.getElementById('summaryTotalDepth').textContent = `${state.totalDepth.toLocaleString()}m`;
+        document.getElementById('summaryZoneReached').textContent = `${zone.name} Reached`;
+        document.getElementById('summaryTotalScore').textContent = state.totalScore.toLocaleString();
+        document.getElementById('summaryKrillionCount').textContent = krillionCount;
+        document.getElementById('summaryAnsweredCount').textContent = `${answeredCount}/${state.runHistory.length}`;
+
+        // Emoji share grid
+        const emojiGrid = state.runHistory.map(h => TIERS[h.tierKey].gridEmoji).join('');
+        document.getElementById('summaryEmojiBar').textContent = emojiGrid;
+
+        // Prompt breakdown list
+        const list = document.getElementById('summaryBreakdownList');
+        list.innerHTML = '';
+        state.runHistory.forEach((entry, idx) => {
+          const t = TIERS[entry.tierKey];
+          const row = document.createElement('div');
+          row.className = 'rounded-2xl bg-slate-950/45 border border-sky-200/10 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5';
+          row.innerHTML = `
+            <div class="space-y-0.5 min-w-0">
+              <div class="text-[11px] font-mono text-sky-200/55">#${idx + 1} • ${escapeHtml(entry.prompt)}</div>
+              <div class="font-bold text-white text-base truncate">${escapeHtml(entry.answer)}</div>
+            </div>
+            <div class="flex items-center justify-between sm:justify-end gap-2.5 shrink-0">
+              <span class="px-2.5 py-1 rounded-xl text-xs font-bold border ${t.badgeClass}">
+                ${t.emoji} ${t.label}
+              </span>
+              <span class="font-mono font-extrabold text-sm text-cyan-200 min-w-[66px] text-right">
+                +${entry.meters.toLocaleString()}m
+              </span>
+            </div>
+          `;
+          list.appendChild(row);
+        });
+
+        switchView('summary');
+        if (krillionCount > 0 || state.totalDepth >= 4500) {
+          OceanCanvas.triggerCelebration('krillion');
+          SoundFX.playTierChime('krillion');
+        }
+      }
+
+      // Copy shareable Krillion-style emoji result grid using execCommand('copy')
+      function copyResultGridToClipboard() {
+        const zone = getOceanZone(state.totalDepth);
+        const emojiGrid = state.runHistory.map(h => TIERS[h.tierKey].gridEmoji).join('');
+        const krillions = state.runHistory.filter(h => h.tierKey === 'krillion').length;
+        const packLabel = getPackDisplayName(state.selectedPack).replace(/^[^\w]+\s*/, '');
+
+        const shareText = [
+          `🦐 KRILLION UNLIMITED (${packLabel})`,
+          `🌊 Depth: ${state.totalDepth.toLocaleString()}m — ${zone.name}`,
+          `${emojiGrid}`,
+          `Score: ${state.totalScore} pts | Krillions: ${krillions} 👑`
+        ].join('\n');
+
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = shareText;
+          textarea.setAttribute('readonly', '');
+          textarea.style.position = 'fixed';
+          textarea.style.left = '-9999px';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          textarea.setSelectionRange(0, shareText.length);
+          const ok = document.execCommand('copy');
+          document.body.removeChild(textarea);
+
+          if (ok) {
+            showToast('Result grid copied to clipboard!', 'success');
+          } else {
+            showToast('Could not copy automatically — select the emoji bar above!', 'warn');
+          }
+        } catch (err) {
+          showToast('Copy unavailable in this browser context.', 'warn');
+        }
+      }
+
+      /* =====================================================================
+         14. CUSTOM AI TOPIC PACK GENERATOR HANDLER
+      ===================================================================== */
+      async function handleGenerateCustomPack(e) {
+        e.preventDefault();
+        const input = document.getElementById('customTopicInput');
+        const topic = input.value.trim();
+        if (!topic) {
+          showToast('Enter any topic first (e.g., Anime, Valorant, Minecraft)!', 'warn');
+          input.focus();
+          return;
+        }
+
+        const btn = document.getElementById('generatePackBtn');
+        const btnText = document.getElementById('genBtnText');
+        btn.disabled = true;
+        input.disabled = true;
+        btnText.textContent = 'Generating 7 prompts...';
+        SoundFX.playBubble();
+
+        try {
+          const data = await generateCustomPackWithGemini(topic);
+          if (!data || !Array.isArray(data.prompts) || data.prompts.length === 0) {
+            throw new Error('Invalid pack payload');
+          }
+
+          const packId = 'custom_' + Date.now();
+          const formattedPrompts = data.prompts.slice(0, 7).map(p => ({
+            pack: packId,
+            q: p.q,
+            tiers: {
+              plankton: p.plankton || [],
+              tooClever: p.tooClever || [],
+              schooler: p.schooler || [],
+              rare: p.rare || [],
+              deepCut: p.deepCut || [],
+              krillion: p.krillion || []
+            },
+            aliases: {}
+          }));
+
+          const newPack = {
+            id: packId,
+            name: (data.packName || topic).slice(0, 28),
+            prompts: formattedPrompts
+          };
+
+          state.customPacks.unshift(newPack);
+          state.customPacks = state.customPacks.slice(0, 6);
+          state.selectedPack = packId;
+          saveCustomPacks();
+          renderPackPills();
+
+          input.value = '';
+          SoundFX.playTierChime('rare');
+          showToast(`✨ "${newPack.name}" pack ready (${formattedPrompts.length} prompts)! Hit Begin Dive!`, 'success');
+        } catch (err) {
+          showToast('Could not reach Gemini AI right now — try a built-in pack or retry!', 'error');
+        } finally {
+          btn.disabled = false;
+          input.disabled = false;
+          btnText.textContent = 'Generate Pack';
+        }
+      }
+
+      /* =====================================================================
+         15. EVENT BINDINGS & INITIALIZATION
+      ===================================================================== */
+      function bindEvents() {
+        // Brand / Header Navigation
+        document.getElementById('brandHomeBtn').addEventListener('click', () => {
+          if (state.view !== 'home') {
+            SoundFX.playBubble();
+            switchView('home');
+          }
+        });
+
+        document.getElementById('quitToMenuBtn').addEventListener('click', () => {
+          SoundFX.playBubble();
+          if (state.runHistory.length > 0 && state.mode !== 'classic') {
+            finishDiveAndShowSummary();
+          } else {
+            switchView('home');
+          }
+        });
+
+        // Sound Mute Toggle
+        document.getElementById('soundToggleBtn').addEventListener('click', () => {
+          saveMuted(!state.muted);
+          updateSoundButtonIcon();
+          if (!state.muted) SoundFX.playBubble();
+        });
+
+        // Skins Locker Modal
+        const openSkins = () => {
+          SoundFX.playBubble();
+          renderSkinsModal();
+          document.getElementById('skinsModal').classList.remove('hidden');
+        };
+        const closeSkins = () => {
+          document.getElementById('skinsModal').classList.add('hidden');
+        };
+        document.getElementById('openSkinsBtn').addEventListener('click', openSkins);
+        document.getElementById('homeKrillPreview').addEventListener('click', openSkins);
+        document.getElementById('closeSkinsModalBtn').addEventListener('click', closeSkins);
+        document.getElementById('confirmSkinsBtn').addEventListener('click', closeSkins);
+        document.getElementById('skinsModal').addEventListener('click', (e) => {
+          if (e.target.id === 'skinsModal') closeSkins();
+        });
+
+        // Mode Selection Cards
+        document.querySelectorAll('.mode-card').forEach(card => {
+          card.addEventListener('click', () => {
+            state.mode = card.dataset.mode;
+            SoundFX.playBubble();
+            document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('pill-active'));
+            card.classList.add('pill-active');
+            document.getElementById('chillTimerRow').classList.toggle('hidden', state.mode !== 'chill');
+          });
+        });
+
+        document.getElementById('chillTimerToggle').addEventListener('change', (e) => {
+          state.chillTimerEnabled = e.target.checked;
+        });
+
+        // Start Dive CTA
+        document.getElementById('startDiveBtn').addEventListener('click', startNewDive);
+
+        // Custom AI Pack Form
+        document.getElementById('customPackForm').addEventListener('submit', handleGenerateCustomPack);
+
+        // Active Gameplay Forms & Buttons
+        document.getElementById('answerForm').addEventListener('submit', handleSubmitAnswer);
+        document.getElementById('skipPromptBtn').addEventListener('click', () => handleSkipOrTimeout(false));
+        document.getElementById('nextPromptBtn').addEventListener('click', advanceToNextPrompt);
+        document.getElementById('retryForRarerBtn').addEventListener('click', handleRetryForRarer);
+        document.getElementById('endEndlessBtn').addEventListener('click', finishDiveAndShowSummary);
+
+        // Toggle Full Tiers Explorer on Reveal Card
+        document.getElementById('toggleAllTiersBtn').addEventListener('click', () => {
+          const panel = document.getElementById('allTiersExpanded');
+          const isHidden = panel.classList.contains('hidden');
+          panel.classList.toggle('hidden');
+          document.getElementById('toggleAllTiersLabel').textContent = isHidden ? 'Hide extra sample tiers' : 'Show more sample tiers';
+          document.getElementById('toggleAllTiersChevron').style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+
+        // Summary View Actions
+        document.getElementById('copyResultGridBtn').addEventListener('click', copyResultGridToClipboard);
+        document.getElementById('diveAgainBtn').addEventListener('click', startNewDive);
+        document.getElementById('summaryMenuBtn').addEventListener('click', () => {
+          SoundFX.playBubble();
+          switchView('home');
+        });
+
+        // Keyboard Shortcut: Enter on Reveal Card advances smoothly
+        window.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && !document.getElementById('skinsModal').classList.contains('hidden')) {
+            closeSkins();
+            return;
+          }
+          if (
+            e.key === 'Enter' &&
+            state.view === 'game' &&
+            state.promptResolved &&
+            document.getElementById('skinsModal').classList.contains('hidden') &&
+            document.activeElement?.tagName !== 'BUTTON'
+          ) {
+            e.preventDefault();
+            advanceToNextPrompt();
+          }
+        });
+      }
+
+      // Boot Application on window.onload
+      window.onload = function () {
+        loadPersistedState();
+        refreshAllKrillAvatars();
+        updateSoundButtonIcon();
+        renderHomeStats();
+        renderPackPills();
+        bindEvents();
+
+        OceanCanvas.init();
+        OceanCanvas.render();
+      };
+    })();
+  </script>
+</body>
+</html>
